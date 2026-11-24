@@ -582,8 +582,8 @@ export const AssistantPage: React.FC = () => {
     recordRecentQuestion(query);
 
     const historyPayload = activeSession.messages
-      .filter((m) => !m.isError && !m.id.startsWith('msg-welcome'))
-      .slice(-4)
+      .filter((m) => !m.isError && !m.id.startsWith('msg-welcome') && !m.id.startsWith('msg-greet'))
+      .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
     if (!options?.isRetry) {
@@ -977,7 +977,6 @@ export const AssistantPage: React.FC = () => {
                       )}
                     </div>
 
-                    {!isUser && msg.content.includes('IT & Wi-Fi ticket') && <button className="underline" onClick={()=>navigate('services')}>Raise a ticket</button>}
                     {!isUser && msg.ragTrace && msg.ragTrace.usedDemoCount > 0 && (
                       <div
                         role="note"
@@ -996,6 +995,51 @@ export const AssistantPage: React.FC = () => {
                     ) : (
                       <FormattedMessage content={msg.content} />
                     )}
+
+                    {!isUser &&
+                      (msg.content.includes('IT & Wi-Fi ticket') ||
+                        msg.content.includes('GLA University Mathura')) && (
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                          {msg.content.includes('IT & Wi-Fi ticket') && (
+                            <button
+                              type="button"
+                              className="font-medium text-blue-700 dark:text-teal-300 underline underline-offset-2 hover:text-blue-900 dark:hover:text-teal-200 cursor-pointer"
+                              onClick={() => navigate('services')}
+                            >
+                              Raise a ticket
+                            </button>
+                          )}
+                          {msg.content.includes('GLA University Mathura') && (
+                            <>
+                              <button
+                                type="button"
+                                className="font-medium text-blue-700 dark:text-teal-300 underline underline-offset-2 hover:text-blue-900 dark:hover:text-teal-200 cursor-pointer"
+                                onClick={() => navigate('academics')}
+                              >
+                                Open Sample Fee Calculator
+                              </button>
+                              <a
+                                href="https://www.gla.ac.in/mathura"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-medium text-blue-700 dark:text-teal-300 underline underline-offset-2 hover:text-blue-900 dark:hover:text-teal-200"
+                              >
+                                <span>Official GLA University Fee Portal</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
+                              </a>
+                              <a
+                                href="https://www.gla.ac.in/contact-us"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-medium text-blue-700 dark:text-teal-300 underline underline-offset-2 hover:text-blue-900 dark:hover:text-teal-200"
+                              >
+                                <span>Official GLA Hostel &amp; Admissions Desk</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      )}
 
                     {Boolean(msg.evidenceIds?.length) && <details className="mt-2 text-xs text-slate-500"><summary className="cursor-pointer">How was this answer found?</summary><p>{msg.answerPath}</p>{msg.evidenceIds?.map(id=><p key={id}>{knowledgeBase.find(r=>r.id===id)?.title || id}</p>)}</details>}
                     {!isUser && msg.ragTrace && msg.ragTrace.citations.length > 0 && (

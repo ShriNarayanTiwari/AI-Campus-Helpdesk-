@@ -18,7 +18,7 @@ async function startServer(){
  app.post('/api/chat',async(req,res)=>{
    const query=req.body?.query;
    if(typeof query!=='string'||query.length>2000){res.status(400).json({error:'Enter a shorter question.'});return;}
-   const history=Array.isArray(req.body.history)?req.body.history.filter((m:any)=>m&&['assistant','user'].includes(m.role)&&typeof m.content==='string').slice(-4):[];
+   const history=Array.isArray(req.body.history)?req.body.history.filter((m:any)=>m&&['assistant','user'].includes(m.role)&&typeof m.content==='string').slice(-6):[];
    let recordId:string|undefined;
    let reply=answer(query,history);
    if(client && reply.startsWith('I don’t have that detail')){
