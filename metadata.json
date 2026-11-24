@@ -1,0 +1,8 @@
+{
+  "name": "AI Campus Helpdesk",
+  "description": "A student helpdesk for fictional Cedarbrook Campus, with a searchable handbook, contextual chat and locally saved student workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
