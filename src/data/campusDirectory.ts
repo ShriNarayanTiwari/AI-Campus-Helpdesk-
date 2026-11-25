@@ -5,11 +5,13 @@ import {
   FacilityItem,
   HelpdeskTicket,
   SocialChannel,
-  SuggestedPrompt,
   TimetableSlot,
 } from '../types/campus';
 
-const CHECKED_DATE = '2026-11-20';
+const CHECKED_DATE = '2026-11-24';
+
+export const STUDENT_ACTIVITIES_NOTICE =
+  'For current club activities and event announcements, please refer to official university communication channels.';
 
 export const CAMPUS_IMAGES = {
   hero: '/src/assets/images/gla_campus_hero_1795185170143.jpg',
@@ -19,40 +21,136 @@ export const CAMPUS_IMAGES = {
 };
 
 export const FACILITIES_DIRECTORY: FacilityItem[] = [
-  ['library','Central Library','Library','Quiet desks, e-books, printing and group-study rooms.',CAMPUS_IMAGES.library],
-  ['hostel','Residential Halls','Hostels','Double AC and non-AC rooms with shared lounges, Wi-Fi and laundry.',CAMPUS_IMAGES.sportsHostel],
-  ['travel','Campus Shuttle','Transport','Main Gate, Market Square and Lake Stop.',CAMPUS_IMAGES.hero],
-  ['meal-hours','Residential Dining Hall','Mess & Dining','Breakfast, lunch and dinner beside the hostels.',CAMPUS_IMAGES.sportsHostel],
-  ['health','Welcome Court Health Desk','Medical & Safety','Daytime first-aid assistance at Welcome Court.',CAMPUS_IMAGES.hero],
-  ['labs','Science Hall Computing Labs','Academic','Supervised practical sessions and open practice.',CAMPUS_IMAGES.hero],
-  ['services','Student Services Desk','Campus Services','ID replacement, support tickets and appointment requests.',CAMPUS_IMAGES.hero],
-  ['sports','Sports and Computing','Sports','Outdoor courts and computing labs beside Science Hall.',CAMPUS_IMAGES.sportsHostel]
-].map(([id,name,category,summary,image])=>({id,name,category:category as FacilityItem['category'],summary,image,verifiedDetails:[summary],demoDetails:[],sourceUrl:'',sourceName:'Campus handbook',lastChecked:CHECKED_DATE,suggestedQuestion:'Tell me about '+name}));
+  [
+    'library',
+    'Central Library',
+    'Library',
+    'Quiet reading desks, e-books, printing, and group-study rooms. Bring your student ID to borrow books.',
+    CAMPUS_IMAGES.library,
+    'Tell me about library services and hours',
+  ],
+  [
+    'hostel',
+    'Residential Hostels',
+    'Hostels',
+    'Double AC and Double Non-AC categories are listed in the estimator, with Wi-Fi support and shared common spaces. Verify allocation and residence rules through official hostel administration.',
+    CAMPUS_IMAGES.sportsHostel,
+    'Tell me about hostel facilities and rules',
+  ],
+  [
+    'travel',
+    'Campus Transport Desk',
+    'Transport',
+    'General campus commuting and transport desk guidance. Confirm live bus routes, timings, and pass charges with the GLA University Transport Office.',
+    CAMPUS_IMAGES.hero,
+    'What are the campus transport details?',
+  ],
+  [
+    'meal-hours',
+    'Dining & Mess Support',
+    'Mess & Dining',
+    'Optional annual mess plan information for residential students. Confirm daily menus and serving schedules through official hostel notices.',
+    CAMPUS_IMAGES.sportsHostel,
+    'How does the optional mess plan work?',
+  ],
+  [
+    'health',
+    'Campus Health & First Aid',
+    'Medical & Safety',
+    'Daytime first-aid assistance and student health support. Verify dispensary hours and emergency contacts through official university channels.',
+    CAMPUS_IMAGES.hero,
+    'Tell me about campus health and first aid support',
+  ],
+  [
+    'labs',
+    'Academic Computing Labs',
+    'Academic',
+    'Supervised practical sessions and workstation access for enrolled students. Confirm lab allocations and schedules through your academic department.',
+    CAMPUS_IMAGES.hero,
+    'Tell me about academic computing labs',
+  ],
+  [
+    'services',
+    'Student Services Desk',
+    'Campus Services',
+    'Guidance for student ID card inquiries, campus Wi-Fi support, hostel maintenance requests, and general student assistance.',
+    CAMPUS_IMAGES.hero,
+    'What student services are available?',
+  ],
+  [
+    'sports',
+    'Sports & Recreation',
+    'Sports',
+    'Outdoor courts and campus recreational areas for student fitness and athletics. Confirm access hours and bookings with campus sports administration.',
+    CAMPUS_IMAGES.sportsHostel,
+    'Tell me about campus sports facilities',
+  ],
+].map(([id, name, category, summary, image, suggestedQuestion]) => ({
+  id,
+  name,
+  category: category as FacilityItem['category'],
+  summary,
+  image,
+  verifiedDetails: [summary],
+  demoDetails: [],
+  sourceUrl: 'https://www.gla.ac.in',
+  sourceName: 'Campus Assist',
+  lastChecked: CHECKED_DATE,
+  suggestedQuestion,
+}));
 
+/**
+ * Credible Student Activity Interest Areas (not official named GLA clubs).
+ * Shared across ClubsPage, EventsPage, HomePage, and the Campus Assist engine.
+ */
 export const CLUBS_DIRECTORY: ClubItem[] = [
- ['Circuit Circle','Technical','Build and test student electronics projects.','Tuesday','Science Hall'],
- ['Shutter Society','Media & Creative','Learn photography and cover campus events.','Friday','Media Studio'],
- ['Stagecraft','Cultural & Arts','Rehearse plays and help with stage production.','Wednesday','Arts Hall'],
- ['River Runners','Cultural & Arts','Organise social runs and campus walks.','Saturday','Sports Courts'],
- ['Build Guild','Technical','Prototype useful student tools in small teams.','Monday','Computing Lab'],
- ['Green Circle','Departmental','Maintain the teaching garden and run waste audits.','Friday','Welcome Court'],
- ['Design Desk','Media & Creative','Practice layout, design critique and illustration.','Tuesday','Media Studio'],
- ['Wordsmiths','Literary & Debate','Share poems and edit the student anthology.','Friday','Library'],
- ['Rhythm Room','Cultural & Arts','Practice percussion and ensemble arrangements.','Thursday','Arts Hall'],
- ['Logic League','Technical','Solve programming challenges in pairs.','Wednesday','Computing Lab'],
- ['Market Makers','Departmental','Practice budgeting and student enterprise pitches.','Monday','Science Hall'],
- ['Open Floor','Literary & Debate','Practice public speaking and competitive debate.','Thursday','Welcome Court']
-].map(([name,category,description,day,venue])=>({id:name.toLowerCase().replaceAll(' ','-'),name,category:category as ClubItem['category'],description,sourceType:'demo',sourceLabel:'Prototype sample',sourceUrl:'',sourceName:'Club register',lastChecked:CHECKED_DATE,verifiedActivities:[description],demoSchedule:day+' at 5 PM.',demoUpcomingActivity:'Open practice session',demoVenueNote:'Meet at '+venue+'.'}));
+  [
+    'Technical & Coding',
+    'Technical',
+    'Software development, competitive programming, electronics, robotics, and technical project collaboration.',
+  ],
+  [
+    'Media & Photography',
+    'Media & Creative',
+    'Campus photography, videography, graphic design, digital media, and creative documentation.',
+  ],
+  [
+    'Cultural & Performing Arts',
+    'Cultural & Arts',
+    'Music, theatre, dance, fine arts, and student-led cultural performances.',
+  ],
+  [
+    'Literary & Debate',
+    'Literary & Debate',
+    'Public speaking, debate, creative writing, journalism, and campus editorial interests.',
+  ],
+  [
+    'Sports & Fitness',
+    'Sports & Fitness',
+    'Outdoor sports, athletics, indoor games, and student wellness activities.',
+  ],
+  [
+    'Community & Sustainability',
+    'Departmental',
+    'Student volunteering, environmental awareness, and department-level outreach initiatives.',
+  ],
+].map(([name, category, description]) => ({
+  id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+  name,
+  category: category as ClubItem['category'],
+  description,
+  sourceType: 'demo',
+  sourceLabel: 'Prototype sample',
+  sourceUrl: 'https://www.gla.ac.in',
+  sourceName: 'Student Interest Areas',
+  lastChecked: CHECKED_DATE,
+  verifiedActivities: [description],
+  demoSchedule: 'Schedules and registrations are announced through official university channels.',
+  demoUpcomingActivity: STUDENT_ACTIVITIES_NOTICE,
+  demoVenueNote: 'Verify current club names, faculty coordinators, and venues via official university notices.',
+}));
 
-export const CAMPUS_EVENTS: CampusEvent[] = [
- ['Circuit Lab','Technical','2026-12-04','Science Hall','Circuit Circle'],
- ['Winter Showcase','Cultural','2026-12-18','Arts Hall','Stagecraft'],
- ['Open Debate','Cultural','2026-12-09','Welcome Court','Open Floor'],
- ['Campus Photo Walk','Workshop','2026-12-10','Main Gate','Shutter Society'],
- ['Welcome Fair','Academic','2026-09-04','Welcome Court','Student Services'],
- ['Sports Meet','Sports','2026-10-12','Sports Courts','Student Services'],
- ['Portfolio Clinic','Career','2027-01-08','Media Studio','Career Studio']
-].map(([title,category,date,venue,organizer])=>({id:title.toLowerCase().replaceAll(' ','-'),title,category:category as CampusEvent['category'],date,startTime:'16:00',endTime:'18:00',venue,organizer,description:'Join '+organizer+' for '+title+' at '+venue+'.',sourceType:'demo',sourceLabel:'Prototype sample',sourceUrl:'',lastChecked:CHECKED_DATE}));
+export const CAMPUS_EVENTS: CampusEvent[] = [];
 
 export const SOCIAL_CHANNELS: SocialChannel[] = [];
 
@@ -67,36 +165,57 @@ export const DEMO_TIMETABLE: TimetableSlot[] = [
   { day: 'Wednesday', time: '11:15 – 12:15', subject: 'Introduction to AI & Computing', code: 'BCSC-0105', type: 'Lecture', room: 'Room AB-102' },
   { day: 'Thursday', time: '10:00 – 12:00', subject: 'Electronics & Circuits Lab', code: 'BECE-0151', type: 'Lab', room: 'Lab EC-03' },
   { day: 'Thursday', time: '14:00 – 15:00', subject: 'Programming for Problem Solving', code: 'BCSC-0101', type: 'Lecture', room: 'Room AB-101' },
-  { day: 'Friday', time: '09:00 – 11:00', subject: 'Mini-Project & Design Thinking Studio', code: 'BPRJ-0190', type: 'Lab', room: 'Demo Innovation Lab' },
+  { day: 'Friday', time: '09:00 – 11:00', subject: 'Mini-Project & Design Thinking Studio', code: 'BPRJ-0190', type: 'Lab', room: 'Innovation Lab' },
   { day: 'Friday', time: '11:15 – 12:15', subject: 'Technical Communication', code: 'BENG-0101', type: 'Tutorial', room: 'Room AB-105' },
 ];
 
-export const DEMO_ANNOUNCEMENTS: AnnouncementItem[] = CAMPUS_EVENTS.map(e=>({id:e.id,title:e.title,date:e.date,category:e.category,summary:e.description,sourceLabel:'Prototype sample'}));
+export const DEMO_ANNOUNCEMENTS: AnnouncementItem[] = [];
 
 export const PRELOADED_DEMO_TICKETS: HelpdeskTicket[] = [];
-export const OFFICIAL_QUICK_LINKS: {label:string,url:string,tag:string}[] = [];
-export const SUGGESTED_TEST_PROMPTS: SuggestedPrompt[] = ['Tell me about the library','Compare double AC and double non-AC hostel fees','What clubs can I join?','What is B.Tech tuition?','What events are coming up?','My hostel Wi-Fi is not working'].map((question,i)=>({id:String(i),question,category:['Library','Hostels','Clubs','Academics','Events','Services'][i],intentHint:'General AI'}));
 
-export interface DemoTourStep {
-  step: number;
-  pillar:
-    | 'Problem Statement'
-    | 'Official vs Demo Data'
-    | 'Local RAG Retrieval'
-    | 'Citations & Evidence'
-    | 'Guardrails'
-    | 'Local Workflows'
-    | 'Limitations'
-    | 'Future Scope';
-  title: string;
-  page: 'home' | 'assistant' | 'facilities' | 'clubs' | 'events' | 'services' | 'knowledge-base' | 'about';
-  vivaGoal: string;
-  talkingPoint: string;
-  demoQuery?: string;
+export const OFFICIAL_QUICK_LINKS: { label: string; url: string; tag: string }[] = [
+  { label: 'Official GLA University Website', url: 'https://www.gla.ac.in', tag: 'University Portal' },
+  { label: 'Official GLA Hostel Information', url: 'https://www.gla.ac.in/campus-life/hostel-facility', tag: 'Hostel & Residence' },
+  { label: 'GLAMS Student Portal', url: 'https://glauniversity.in:8085', tag: 'Student Portal' },
+  { label: 'GLA Admissions & Contact Desk', url: 'https://www.gla.ac.in/contact-us', tag: 'Admissions & Support' },
+];
+
+export interface SuggestedQuestionItem {
+  id: string;
+  label: string;
+  question: string;
+  category: string;
 }
 
-export const PRESENTATION_TOUR_STEPS: DemoTourStep[] = [
- {step:1,pillar:'Problem Statement',title:'Find campus information',page:'home',vivaGoal:'Show the student dashboard.',talkingPoint:'Pages and chat share the Cedarbrook handbook.'},
- {step:2,pillar:'Local RAG Retrieval',title:'Ask about the library',page:'assistant',vivaGoal:'Ask a question, then ask about Sunday.',talkingPoint:'The assistant selects handbook records and keeps recent chat context.',demoQuery:'Tell me about the library.'},
- {step:3,pillar:'Local Workflows',title:'Track a request',page:'services',vivaGoal:'Raise a ticket and refresh.',talkingPoint:'The ticket history is stored on this device.'}
+export const SUGGESTED_QUESTIONS: SuggestedQuestionItem[] = [
+  {
+    id: 'all-course-fees',
+    label: 'Fee structure overview',
+    question: 'What is the fees structure of all branches?',
+    category: 'Academics & Fees',
+  },
+  {
+    id: 'hostel-facilities-rules',
+    label: 'Hostel facilities & rules',
+    question: 'Tell me about hostel facilities and rules',
+    category: 'Hostels',
+  },
+  {
+    id: 'library-services',
+    label: 'Library services',
+    question: 'Tell me about library services and hours',
+    category: 'Library',
+  },
+  {
+    id: 'clubs-and-events',
+    label: 'Student activities & events',
+    question: 'Tell me about campus clubs and upcoming events',
+    category: 'Student Life',
+  },
+  {
+    id: 'student-services',
+    label: 'Student services',
+    question: 'What student services are available?',
+    category: 'Support',
+  },
 ];

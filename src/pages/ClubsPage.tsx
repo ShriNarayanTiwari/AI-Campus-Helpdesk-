@@ -2,73 +2,75 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   ExternalLink,
-  FlaskConical,
+  Info,
   MessageSquare,
   Search,
   UserPlus,
   X,
 } from 'lucide-react';
-import { SafeImage } from '../components/SafeImage';
-import { SourceLabel } from '../components/SourceLabel';
+import { ActivitiesHeroIllustration } from '../components/HeroIllustrations';
 import { useCampus } from '../context/CampusContext';
-import { CAMPUS_IMAGES, CLUBS_DIRECTORY } from '../data/campusDirectory';
+import {
+  CLUBS_DIRECTORY,
+  STUDENT_ACTIVITIES_NOTICE,
+} from '../data/campusDirectory';
 import type { ClubItem } from '../types/campus';
 
-const CLUB_CATEGORIES = [
+const ACTIVITY_CATEGORIES = [
   'All',
   'Technical',
   'Media & Creative',
   'Cultural & Arts',
   'Literary & Debate',
+  'Sports & Fitness',
   'Departmental',
 ];
 
 export const ClubsPage: React.FC = () => {
   const {
+    accessSession,
     clubRegistrations,
     registerClubInterest,
     cancelClubInterest,
     openAssistantWithPrompt,
     trackRecentlyViewed,
-    userProfile,
   } = useCampus();
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
-  const [selectedClub, setSelectedClub] = useState<ClubItem | null>(null);
-  const [registerModalClub, setRegisterModalClub] = useState<ClubItem | null>(null);
+  const [selectedArea, setSelectedArea] = useState<ClubItem | null>(null);
+  const [registerModalArea, setRegisterModalArea] = useState<ClubItem | null>(null);
 
   useEffect(() => {
-    if (!selectedClub && !registerModalClub) return;
+    if (!selectedArea && !registerModalArea) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (registerModalClub) setRegisterModalClub(null);
-      else if (selectedClub) setSelectedClub(null);
+      if (registerModalArea) setRegisterModalArea(null);
+      else if (selectedArea) setSelectedArea(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedClub, registerModalClub]);
+  }, [selectedArea, registerModalArea]);
 
-  // Registration form fields
-  const [studentName, setStudentName] = useState(userProfile.isGuest ? '' : userProfile.name);
-  const [courseYear, setCourseYear] = useState(
-    userProfile.isGuest ? 'B.Tech 1st Year' : `${userProfile.programme} (${userProfile.year})`
+  const [studentName, setStudentName] = useState(
+    accessSession?.mode === 'student' ? accessSession.displayName : ''
   );
+  const [courseYear, setCourseYear] = useState('B.Tech 1st Year');
   const [interestNote, setInterestNote] = useState('');
   const [formError, setFormError] = useState('');
 
-  const handleExploreClub = (club: ClubItem) => {
-    setSelectedClub(club);
+  const handleExploreArea = (area: ClubItem) => {
+    setSelectedArea(area);
     trackRecentlyViewed({
-      id: club.id,
-      title: club.name,
-      category: club.category,
+      id: area.id,
+      title: area.name,
+      category: area.category,
       type: 'club',
       targetPage: 'clubs',
     });
   };
 
-  const registeredIds = useMemo(
+  const savedIds = useMemo(
     () => new Set(clubRegistrations.map((r) => r.clubId)),
     [clubRegistrations]
   );
@@ -84,30 +86,32 @@ export const ClubsPage: React.FC = () => {
     });
   }, [search, category]);
 
-  const handleOpenRegister = (club: ClubItem) => {
-    setRegisterModalClub(club);
+  const handleOpenSaveInterest = (area: ClubItem) => {
+    setRegisterModalArea(area);
     setFormError('');
+    if (!studentName && accessSession?.mode === 'student') {
+      setStudentName(accessSession.displayName);
+    }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleSaveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerModalClub) return;
+    if (!registerModalArea) return;
     if (studentName.trim().length < 2) {
-      setFormError('Please enter your name (at least 2 characters) to save demo interest.');
+      setFormError('Please enter your name (at least 2 characters) to save your interest.');
       return;
     }
 
     registerClubInterest({
-      clubId: registerModalClub.id,
-      clubName: registerModalClub.name,
+      clubId: registerModalArea.id,
+      clubName: registerModalArea.name,
       studentName: studentName.trim(),
       courseYear: courseYear.trim() || 'B.Tech 1st Year',
       interestNote: interestNote.trim(),
     });
-    setStudentName('');
     setInterestNote('');
     setFormError('');
-    setRegisterModalClub(null);
+    setRegisterModalArea(null);
   };
 
   return (
@@ -117,65 +121,78 @@ export const ClubsPage: React.FC = () => {
         <div className="lg:col-span-8 p-6 sm:p-7 flex flex-col justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <SourceLabel type="official" compact />
-              <span aria-hidden="true">·</span>
-              <span>Student societies at Cedarbrook</span>
+              <span>Student Interest Areas · Designed for GLA University students</span>
             </div>
             <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
-              Clubs &amp; Societies Directory
+              Student Activities &amp; Interest Areas
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-              Find a club, check its meeting time and register your interest.
+              Explore general student interest areas and bookmark topics you want to pursue. These categories are general interest areas rather than an official directory of named GLA University clubs.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-300 tabular-nums">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300 tabular-nums">
             <span>
-              <strong className="text-slate-900 dark:text-white">{CLUBS_DIRECTORY.length}</strong> Featured Clubs
+              <strong className="text-slate-900 dark:text-white">{CLUBS_DIRECTORY.length}</strong> Interest Areas
             </span>
             <span aria-hidden="true">·</span>
             <span>
               <strong className="text-teal-700 dark:text-teal-300">{clubRegistrations.length}</strong> Saved Interests
             </span>
-            <span aria-hidden="true">·</span>
-            
           </div>
         </div>
-        <div className="lg:col-span-4 min-h-[180px] lg:min-h-full">
-          <SafeImage
-            src={CAMPUS_IMAGES.clubs}
-            alt="Students collaborating in a university club workshop"
-            fallbackTitle="GLA Student Clubs & Societies"
-            className="w-full h-full object-cover"
-          />
+        <div className="lg:col-span-4 relative min-h-[200px] lg:min-h-full overflow-hidden">
+          <ActivitiesHeroIllustration />
         </div>
       </section>
 
-      {/* Search & Category Filter */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <div className="relative flex-1 max-w-md">
+      {/* Official Channels Guidance Note */}
+      <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="flex items-start gap-2.5 text-slate-700 dark:text-slate-200">
+          <Info className="w-4 h-4 text-blue-700 dark:text-teal-300 shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="leading-relaxed">{STUDENT_ACTIVITIES_NOTICE}</p>
+        </div>
+        <a
+          href="https://www.gla.ac.in"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-teal-300 hover:underline whitespace-nowrap shrink-0"
+        >
+          <span>Official GLA Website</span>
+          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+        </a>
+      </div>
+
+      {/* Search & Wrapped Category Filter */}
+      <div className="space-y-3">
+        <div className="relative w-full sm:max-w-md">
           <Search
             className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
           />
           <label htmlFor="club-search" className="sr-only">
-            Search clubs and societies
+            Search activities or interests
           </label>
           <input
             id="club-search"
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search MediaScoop, Cyberonites, CSI, Ninad, coding..."
+            placeholder="Search activities or interests…"
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {CLUB_CATEGORIES.map((cat) => (
+        <div
+          role="group"
+          aria-label="Filter activities by category"
+          className="flex flex-wrap items-center gap-2"
+        >
+          {ACTIVITY_CATEGORIES.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
+              aria-pressed={category === cat}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 category === cat
                   ? 'bg-blue-700 text-white'
@@ -191,29 +208,24 @@ export const ClubsPage: React.FC = () => {
       {/* Saved Interest Strip */}
       {clubRegistrations.length > 0 && (
         <section
-          aria-label="Saved Demo Club Registrations"
-          className="bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/70 rounded-xl p-4 space-y-2.5"
+          aria-label="Saved Activity Interests"
+          className="bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200 dark:border-blue-800/70 rounded-xl p-4 space-y-2.5"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <SourceLabel type="demo" />
-              <span className="text-xs text-slate-700 dark:text-slate-300">
-                Your simulated club interest list (saved locally — not submitted to Cedarbrook Campus)
-              </span>
-            </div>
-          </div>
+          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 block">
+            Your saved interest areas (stored on this device)
+          </span>
           <div className="flex flex-wrap gap-2">
             {clubRegistrations.map((reg) => (
               <div
                 key={reg.clubId}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#0E1C32] border border-amber-200 dark:border-amber-800 text-xs"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#0E1C32] border border-blue-200 dark:border-blue-800 text-xs"
               >
                 <span className="font-semibold text-slate-900 dark:text-white">{reg.clubName}</span>
                 <span className="text-slate-500 dark:text-slate-400">({reg.studentName})</span>
                 <button
                   type="button"
                   onClick={() => cancelClubInterest(reg.clubId)}
-                  aria-label={`Remove demo registration for ${reg.clubName}`}
+                  aria-label={`Remove saved interest for ${reg.clubName}`}
                   className="text-slate-400 hover:text-red-600 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -224,10 +236,10 @@ export const ClubsPage: React.FC = () => {
         </section>
       )}
 
-      {/* Clubs Grid */}
+      {/* Interest Areas Grid */}
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-10 text-center space-y-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">No clubs matched your filter.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">No interest areas matched your filter.</p>
           <button
             type="button"
             onClick={() => {
@@ -236,45 +248,43 @@ export const ClubsPage: React.FC = () => {
             }}
             className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 rounded-lg cursor-pointer"
           >
-            Show All Clubs
+            Show All Areas
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((club) => {
-            const isRegistered = registeredIds.has(club.id);
+          {filtered.map((area) => {
+            const isSaved = savedIds.has(area.id);
             return (
               <article
-                key={club.id}
+                key={area.id}
                 className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between gap-4"
               >
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{club.category}</span>
-                    <SourceLabel type={club.sourceType} compact />
-                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    Interest Area · {area.category}
+                  </span>
                   <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white">
-                    {club.name}
+                    {area.name}
                   </h2>
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {club.description}
+                    {area.description}
                   </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5 pt-1">
-                    <FlaskConical className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                    <span>{club.demoSchedule}</span>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
+                    {area.demoSchedule}
                   </p>
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => handleExploreClub(club)}
+                    onClick={() => handleExploreArea(area)}
                     className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
                   >
                     Explore
                   </button>
 
-                  {isRegistered ? (
+                  {isSaved ? (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300 whitespace-nowrap">
                       <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>Interest Saved</span>
@@ -282,11 +292,11 @@ export const ClubsPage: React.FC = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleOpenRegister(club)}
+                      onClick={() => handleOpenSaveInterest(area)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>Register Interest</span>
+                      <span>Save Interest</span>
                     </button>
                   )}
                 </div>
@@ -296,14 +306,14 @@ export const ClubsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Club Explore Modal */}
-      {selectedClub && (
+      {/* Interest Area Details Modal */}
+      {selectedArea && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`${selectedClub.name} club details`}
+          aria-label={`${selectedArea.name} details`}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
-          onClick={() => setSelectedClub(null)}
+          onClick={() => setSelectedArea(null)}
         >
           <div
             className="w-full max-w-xl bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto"
@@ -312,16 +322,16 @@ export const ClubsPage: React.FC = () => {
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
               <div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {selectedClub.category} · Checked {selectedClub.lastChecked}
+                  Interest Area · {selectedArea.category}
                 </span>
                 <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white mt-0.5">
-                  {selectedClub.name}
+                  {selectedArea.name}
                 </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedClub(null)}
-                aria-label="Close club modal"
+                onClick={() => setSelectedArea(null)}
+                aria-label="Close interest area modal"
                 className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -329,96 +339,75 @@ export const ClubsPage: React.FC = () => {
             </div>
 
             <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-              {selectedClub.description}
+              {selectedArea.description}
             </p>
 
-            <div className="space-y-2">
-              <SourceLabel type="official" />
-              <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
-                {selectedClub.verifiedActivities.map((act, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                    <span>{act}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
             <div className="space-y-1.5 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
-              <SourceLabel type="demo" />
-              <p>{selectedClub.demoSchedule}</p>
-              <p>{selectedClub.demoUpcomingActivity}</p>
-              <p>{selectedClub.demoVenueNote}</p>
+              <p>{selectedArea.demoSchedule}</p>
+              <p>{selectedArea.demoVenueNote}</p>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-              
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const name = selectedClub.name;
-                    setSelectedClub(null);
-                    openAssistantWithPrompt(`Tell me about the ${name} club at Cedarbrook Campus.`);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg cursor-pointer"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Ask AI</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = selectedClub;
-                    setSelectedClub(null);
-                    handleOpenRegister(target);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg cursor-pointer"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Register Interest</span>
-                </button>
-              </div>
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedArea(null);
+                  openAssistantWithPrompt('Tell me about campus clubs and upcoming events');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Ask Campus Assist</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedArea;
+                  setSelectedArea(null);
+                  handleOpenSaveInterest(target);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Save Interest</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Simulated Membership Interest Registration Modal */}
-      {registerModalClub && (
+      {/* Save Interest Modal */}
+      {registerModalArea && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Register demo interest for ${registerModalClub.name}`}
+          aria-label={`Save interest in ${registerModalArea.name}`}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
-          onClick={() => setRegisterModalClub(null)}
+          onClick={() => setRegisterModalArea(null)}
         >
           <form
-            onSubmit={handleRegisterSubmit}
+            onSubmit={handleSaveSubmit}
             className="w-full max-w-md bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <SourceLabel type="demo" />
-                <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white mt-1">
-                  Register Interest: {registerModalClub.name}
+                <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white">
+                  Save Interest: {registerModalArea.name}
                 </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Bookmark this interest area on your device. Check official university notices for formal club registrations.
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setRegisterModalClub(null)}
-                aria-label="Close registration dialog"
+                onClick={() => setRegisterModalArea(null)}
+                aria-label="Close save interest dialog"
                 className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 rounded-lg p-3">
-              Your registration is saved on this device.
-            </p>
 
             <div className="space-y-3">
               <div>
@@ -431,7 +420,7 @@ export const ClubsPage: React.FC = () => {
                   required
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="e.g., Ananya Singh"
+                  placeholder="e.g., Ananya Sharma"
                   className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
@@ -457,14 +446,14 @@ export const ClubsPage: React.FC = () => {
 
               <div>
                 <label htmlFor="club-reg-note" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Why are you interested? (Optional)
+                  Personal Note (Optional)
                 </label>
                 <textarea
                   id="club-reg-note"
                   rows={2}
                   value={interestNote}
                   onChange={(e) => setInterestNote(e.target.value)}
-                  placeholder="e.g., Excited to learn ethical hacking / photography..."
+                  placeholder="e.g., Interested in coding projects or photography..."
                   className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
@@ -475,7 +464,7 @@ export const ClubsPage: React.FC = () => {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setRegisterModalClub(null)}
+                onClick={() => setRegisterModalArea(null)}
                 className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
               >
                 Cancel

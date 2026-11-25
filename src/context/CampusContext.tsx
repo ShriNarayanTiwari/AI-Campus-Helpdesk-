@@ -1,10 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  PRELOADED_DEMO_TICKETS,
-  PRESENTATION_TOUR_STEPS,
-} from '../data/campusDirectory';
+import { PRELOADED_DEMO_TICKETS } from '../data/campusDirectory';
 import { records as SEED_KNOWLEDGE_BASE } from '../data/cedar';
 import type {
+  AccessSession,
   ChatMessage,
   ChatSession,
   ClubRegistration,
@@ -14,49 +12,126 @@ import type {
   KnowledgeRecord,
   PageId,
   RecentlyViewedItem,
-  StudentProfile,
   SystemStatusInfo,
   ToastItem,
 } from '../types/campus';
 
 const STORAGE_KEYS = {
-  theme: 'gla_campus_ai_theme',
-  sessions: 'cedar_sessions_v1',
-  clubRegs: 'cedar_club_regs_v1',
-  eventRegs: 'cedar_event_regs_v1',
-  tickets: 'cedar_tickets_v1',
-  customKb: 'cedar_custom_kb_v1',
-  deletedDemoIds: 'cedar_deleted_demo_ids_v1',
-  favorites: 'cedar_favorites_v1',
-  recentQuestions: 'cedar_recent_questions_v1',
-  userProfile: 'gla_campus_ai_profile_v1',
-  savedProfiles: 'gla_campus_ai_saved_profiles_v1',
-  recentlyViewed: 'cedar_recently_viewed_v1',
+  theme: 'campus_assist_theme',
+  legacyTheme: 'gla_campus_ai_theme',
+  clubRegs: 'campus_assist_club_regs_v1',
+  eventRegs: 'campus_assist_event_regs_v1',
+  tickets: 'campus_assist_tickets_v1',
+  customKb: 'campus_assist_custom_resources_v1',
+  deletedIds: 'campus_assist_deleted_resources_v1',
+  favorites: 'campus_assist_favorites_v1',
+  recentlyViewed: 'campus_assist_recently_viewed_v1',
+  // Stores ONLY rollNumber -> displayName mapping on this device (NEVER passwords!)
+  studentDirectory: 'campus_assist_student_directory_v1',
 };
 
-export const INITIAL_GREETING =
-  "Hi! What would you like to know about Cedarbrook Campus?";
+const SESSION_KEYS = {
+  accessSession: 'campus_assist_access_session_v1',
+  legacyGuestEntered: 'campus_assist_guest_entered',
+};
 
-export function createGuestProfile(): StudentProfile {
-  const now = new Date().toISOString();
-  return {
-    id: 'guest',
-    name: 'Guest Student',
-    programme: 'B.Tech CSE',
-    year: '1st Year',
-    interests: ['Coding & AI', 'Library & Research', 'Campus Life & Wellbeing'],
-    preferredCategories: ['Library', 'Clubs & Societies', 'Academics'],
-    isGuest: true,
-    createdAt: now,
-    updatedAt: now,
-  };
+const LEGACY_STORAGE_KEYS_TO_CLEAR = [
+  'gla_campus_sessions_v1',
+  'gla_campus_sessions_v2',
+  'gla_campus_recent_questions_v1',
+  'gla_campus_recent_questions_v2',
+  'gla_campus_ai_profile_v1',
+  'gla_campus_ai_saved_profiles_v1',
+  'campus_assist_sessions',
+  'campus_assist_recent_questions',
+  'campus_assist_guest_entered',
+];
+
+export const INITIAL_GREETING =
+  'Welcome to Campus Assist. Ask about campus services, academics, facilities, student activities, or support resources.';
+
+const VALID_PAGES: PageId[] = [
+  'home',
+  'assistant',
+  'facilities',
+  'clubs',
+  'events',
+  'academics',
+  'services',
+  'knowledge-base',
+];
+
+function clearLegacyAssistantStorage(): void {
+  if (typeof window === 'undefined') return;
+  for (const key of LEGACY_STORAGE_KEYS_TO_CLEAR) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore storage access errors
+    }
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      // Ignore storage access errors
+    }
+  }
 }
 
-function createFreshSession(title = 'New Campus Chat', idPrefix = 'chat'): ChatSession {
+function readInitialAccessSession(): AccessSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_KEYS.accessSession);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AccessSession>;
+    if (
+      parsed &&
+      typeof parsed.displayName === 'string' &&
+      parsed.displayName.trim() &&
+      (parsed.mode === 'student' || parsed.mode === 'guest')
+    ) {
+      return {
+        displayName: parsed.displayName.trim(),
+        rollNumber: typeof parsed.rollNumber === 'string' ? parsed.rollNumber.trim() : undefined,
+        mode: parsed.mode,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function readStudentNameMap(): Record<string, string> {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.studentDirectory);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const clean: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'string' && v.trim()) {
+          clean[k.toUpperCase()] = v.trim();
+        }
+      }
+      return clean;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function readPageFromHash(): PageId {
+  if (typeof window === 'undefined') return 'home';
+  const raw = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase() as PageId;
+  return VALID_PAGES.includes(raw) ? raw : 'home';
+}
+
+function createFreshSession(): ChatSession {
   const now = new Date().toISOString();
   return {
-    id: `${idPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    title,
+    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: 'Campus Assist',
     createdAt: now,
     updatedAt: now,
     messages: [
@@ -65,12 +140,6 @@ function createFreshSession(title = 'New Campus Chat', idPrefix = 'chat'): ChatS
         role: 'assistant',
         content: INITIAL_GREETING,
         timestamp: now,
-        suggestedFollowUps: [
-          'Tell me about the library.',
-          'What clubs can I join at Cedarbrook Campus?',
-          'Are there any upcoming events?',
-          'Who is teaching my class tomorrow?',
-        ],
       },
     ],
   };
@@ -86,93 +155,73 @@ function safeReadJson<T>(key: string, fallback: T): T {
   }
 }
 
-interface ProfileInput {
-  name: string;
-  programme: string;
-  year: string;
-  interests: string[];
-  preferredCategories: KnowledgeCategory[];
-}
-
 interface CampusContextValue {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  accessSession: AccessSession | null;
+  hasEnteredDashboard: boolean;
+  signInStudent: (rollNumber: string) => void;
+  registerStudent: (fullName: string, rollNumber: string) => void;
+  enterAsGuest: () => void;
+  signOut: () => void;
+  returnToWelcome: () => void;
   activePage: PageId;
   navigate: (page: PageId) => void;
   openAssistantWithPrompt: (prompt: string) => void;
   pendingPrompt: string | null;
   clearPendingPrompt: () => void;
 
-  // Prototype Local Account (localStorage only — no real authentication)
-  userProfile: StudentProfile;
-  savedProfiles: StudentProfile[];
-  saveLocalProfile: (input: ProfileInput) => StudentProfile;
-  signInSavedProfile: (profileId: string) => boolean;
-  quickSignInByName: (name: string) => StudentProfile;
-  continueAsGuest: () => void;
-  logoutToGuest: () => void;
-
-  // Knowledge Base Category Deep-Link Preset
+  // Campus Resources Category Deep-Link Preset
   kbCategoryPreset: 'All' | KnowledgeCategory;
   setKbCategoryPreset: (cat: 'All' | KnowledgeCategory) => void;
   openKnowledgeBaseCategory: (cat: KnowledgeCategory) => void;
 
-  // Recently Viewed Activity (localStorage)
+  // Recently Viewed Activity
   recentlyViewed: RecentlyViewedItem[];
   trackRecentlyViewed: (item: Omit<RecentlyViewedItem, 'viewedAt'>) => void;
 
-  // Chat sessions (normal vs isolated demo mode)
-  chatSessions: ChatSession[];
+  // Clean Single-Session Assistant (in-memory only, cleared on startup/refresh)
   activeSession: ChatSession;
-  selectSession: (id: string) => void;
-  createNewSession: () => void;
   clearActiveSession: () => void;
   appendMessageToActive: (msg: ChatMessage, maybeTitle?: string) => void;
   setMessageFeedback: (messageId: string, feedback: 'helpful' | 'not-helpful') => void;
-  deleteSession: (id: string) => void;
 
-  // Knowledge Base (Verified source read-only + Prototype sample CRUD)
+  // Campus Resources
   knowledgeBase: KnowledgeRecord[];
   customDemoRecords: KnowledgeRecord[];
   addDemoRecord: (
-    record: Pick<KnowledgeRecord, 'title' | 'category' | 'description' | 'keywords' | 'sourceUrl' | 'sourceName' | 'lastChecked'> & {
+    record: Pick<
+      KnowledgeRecord,
+      'title' | 'category' | 'description' | 'keywords' | 'sourceUrl' | 'sourceName' | 'lastChecked'
+    > & {
       subcategory?: string;
     }
   ) => void;
   updateDemoRecord: (id: string, updates: Partial<KnowledgeRecord>) => void;
   deleteDemoRecord: (id: string) => void;
 
-  // Clubs Local Prototype Interest
+  // Activity Interest Bookmarks
   clubRegistrations: ClubRegistration[];
   registerClubInterest: (reg: Omit<ClubRegistration, 'registeredAt'>) => void;
   cancelClubInterest: (clubId: string) => void;
 
-  // Events Local Prototype RSVP
+  // Event bookmarks (retained for compatibility)
   eventRegistrations: string[];
   toggleEventRegistration: (eventId: string, eventTitle: string) => void;
 
-  // Local Prototype Helpdesk Tickets
+  // Support Requests
   tickets: HelpdeskTicket[];
   createDemoTicket: (
     data: Pick<HelpdeskTicket, 'subject' | 'category' | 'description' | 'studentName' | 'priority'>
   ) => HelpdeskTicket;
   updateDemoTicketStatus: (id: string, status: HelpdeskTicket['status']) => void;
 
-  // Favorites & Recent Questions
+  // Favorites
   favorites: FavoriteResource[];
   toggleFavorite: (item: FavoriteResource) => void;
   isFavorite: (id: string) => boolean;
-  recentQuestions: string[];
-  recordRecentQuestion: (q: string) => void;
 
-  // Guided Presentation Demo Mode (isolated from ordinary user data)
-  isPresentationMode: boolean;
-  presentationStepIndex: number;
-  startPresentationMode: () => void;
-  exitPresentationMode: () => void;
-  goToPresentationStep: (idx: number) => void;
-
-  // System Status (Live Gemini availability vs Local Fallback)
+  // Service Status
   systemStatus: SystemStatusInfo;
   reportAiMode: (mode: 'gemini-rag' | 'kb-fallback', reason?: string) => void;
 
@@ -184,22 +233,54 @@ interface CampusContextValue {
   toasts: ToastItem[];
   pushToast: (message: string, variant?: ToastItem['variant']) => void;
   dismissToast: (id: string) => void;
-  resetAllPrototypeData: () => void;
+  resetSavedData: () => void;
 }
 
 const CampusContext = createContext<CampusContextValue | null>(null);
 
 export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  clearLegacyAssistantStorage();
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.theme);
+      const saved =
+        localStorage.getItem(STORAGE_KEYS.theme) ?? localStorage.getItem(STORAGE_KEYS.legacyTheme);
       return saved === 'dark' ? 'dark' : 'light';
     } catch {
       return 'light';
     }
   });
 
-  const [activePage, setActivePage] = useState<PageId>('home');
+  const [accessSession, setAccessSession] = useState<AccessSession | null>(() =>
+    readInitialAccessSession()
+  );
+  const hasEnteredDashboard = Boolean(accessSession);
+  const [activePage, setActivePage] = useState<PageId>(() => readPageFromHash());
+
+  useEffect(() => {
+    clearLegacyAssistantStorage();
+  }, []);
+
+  // Keep fresh unauthenticated visits cleanly at `/` (never auto-redirect to `#/home`)
+  useEffect(() => {
+    if (!hasEnteredDashboard) {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        window.history.replaceState(null, '', '/');
+      }
+      return;
+    }
+
+    const syncHash = () => {
+      const next = readPageFromHash();
+      setActivePage(next);
+    };
+    if (!window.location.hash) {
+      window.history.replaceState(null, '', `#/${readPageFromHash()}`);
+    }
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, [hasEnteredDashboard]);
+
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [kbCategoryPreset, setKbCategoryPreset] = useState<'All' | KnowledgeCategory>('All');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -219,7 +300,6 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ...prev,
         online: false,
         lastAiMode: 'kb-fallback',
-        lastFallbackReason: 'Browser offline',
       }));
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
@@ -260,39 +340,18 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   }, []);
 
-  // Local Prototype Profile & Saved Browser Profiles
-  const [userProfile, setUserProfile] = useState<StudentProfile>(() =>
-    safeReadJson<StudentProfile>(STORAGE_KEYS.userProfile, createGuestProfile())
-  );
-  const [savedProfiles, setSavedProfiles] = useState<StudentProfile[]>(() =>
-    safeReadJson<StudentProfile[]>(STORAGE_KEYS.savedProfiles, [])
-  );
+  // In-memory only assistant conversation (never persisted across reloads)
+  const [activeSession, setActiveSession] = useState<ChatSession>(() => createFreshSession());
 
-  // Recently Viewed Items
+  // Persisted campus preferences & bookmarks
   const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>(() =>
     safeReadJson<RecentlyViewedItem[]>(STORAGE_KEYS.recentlyViewed, [])
   );
-
-  // Normal persisted sessions
-  const [userSessions, setUserSessions] = useState<ChatSession[]>(() => {
-    const saved = safeReadJson<ChatSession[]>(STORAGE_KEYS.sessions, []);
-    return saved.length > 0 ? saved : [createFreshSession()];
-  });
-  const [activeUserSessionId, setActiveUserSessionId] = useState<string>(() => userSessions[0]?.id ?? '');
-
-  // Isolated Presentation Demo Mode state (never written to user localStorage!)
-  const [isPresentationMode, setIsPresentationMode] = useState(false);
-  const [presentationStepIndex, setPresentationStepIndex] = useState(0);
-  const [demoSession, setDemoSession] = useState<ChatSession>(() =>
-    createFreshSession('Professor Viva Demo Session', 'viva-demo')
-  );
-
-  // Persisted Demo CRUD / Registrations / Tickets / Favorites
   const [customDemoRecords, setCustomDemoRecords] = useState<KnowledgeRecord[]>(() =>
     safeReadJson<KnowledgeRecord[]>(STORAGE_KEYS.customKb, [])
   );
   const [deletedDemoIds, setDeletedDemoIds] = useState<string[]>(() =>
-    safeReadJson<string[]>(STORAGE_KEYS.deletedDemoIds, [])
+    safeReadJson<string[]>(STORAGE_KEYS.deletedIds, [])
   );
   const [clubRegistrations, setClubRegistrations] = useState<ClubRegistration[]>(() =>
     safeReadJson<ClubRegistration[]>(STORAGE_KEYS.clubRegs, [])
@@ -305,21 +364,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return saved.length > 0 ? saved : PRELOADED_DEMO_TICKETS;
   });
   const [favorites, setFavorites] = useState<FavoriteResource[]>(() =>
-    safeReadJson<FavoriteResource[]>(STORAGE_KEYS.favorites, [
-      {
-        id: 'fac-library',
-        title: 'Central & Departmental Libraries',
-        type: 'facility',
-        targetPage: 'facilities',
-      },
-    ])
-  );
-  const [recentQuestions, setRecentQuestions] = useState<string[]>(() =>
-    safeReadJson<string[]>(STORAGE_KEYS.recentQuestions, [
-      'Tell me about the library.',
-      'What clubs can I join at Cedarbrook Campus?',
-      'Where can I find transport information?',
-    ])
+    safeReadJson<FavoriteResource[]>(STORAGE_KEYS.favorites, [])
   );
 
   // Sync theme to <html>
@@ -332,68 +377,63 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     try {
       localStorage.setItem(STORAGE_KEYS.theme, theme);
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [theme]);
-
-  // Persist user data
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(userProfile));
-      localStorage.setItem(STORAGE_KEYS.savedProfiles, JSON.stringify(savedProfiles));
-    } catch {}
-  }, [userProfile, savedProfiles]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.recentlyViewed, JSON.stringify(recentlyViewed));
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [recentlyViewed]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(userSessions));
-    } catch {}
-  }, [userSessions]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem(STORAGE_KEYS.customKb, JSON.stringify(customDemoRecords));
-      localStorage.setItem(STORAGE_KEYS.deletedDemoIds, JSON.stringify(deletedDemoIds));
-    } catch {}
+      localStorage.setItem(STORAGE_KEYS.deletedIds, JSON.stringify(deletedDemoIds));
+    } catch {
+      // Ignore storage access errors
+    }
   }, [customDemoRecords, deletedDemoIds]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.clubRegs, JSON.stringify(clubRegistrations));
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [clubRegistrations]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.eventRegs, JSON.stringify(eventRegistrations));
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [eventRegistrations]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.tickets, JSON.stringify(tickets));
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [tickets]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favorites));
-    } catch {}
+    } catch {
+      // Ignore storage access errors
+    }
   }, [favorites]);
 
+  // Global keyboard shortcut Cmd/Ctrl+K for search (active inside dashboard)
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.recentQuestions, JSON.stringify(recentQuestions));
-    } catch {}
-  }, [recentQuestions]);
-
-  // Global keyboard shortcut Cmd/Ctrl+K for search
-  useEffect(() => {
+    if (!hasEnteredDashboard) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -402,7 +442,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [hasEnteredDashboard]);
 
   const pushToast = useCallback((message: string, variant: ToastItem['variant'] = 'info') => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
@@ -430,108 +470,120 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const navigate = useCallback((page: PageId) => {
     setActivePage(page);
+    if (typeof window !== 'undefined' && window.location.hash !== `#/${page}`) {
+      window.location.hash = `#/${page}`;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const persistAccessSession = useCallback((session: AccessSession) => {
+    // Only store displayName, rollNumber, and mode in sessionStorage — NEVER passwords.
+    const safeSession: AccessSession = {
+      displayName: session.displayName.trim(),
+      ...(session.rollNumber ? { rollNumber: session.rollNumber.trim().toUpperCase() } : {}),
+      mode: session.mode,
+    };
+    try {
+      window.sessionStorage.setItem(SESSION_KEYS.accessSession, JSON.stringify(safeSession));
+    } catch {
+      // Ignore storage access errors
+    }
+    setAccessSession(safeSession);
+    setActivePage('home');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '#/home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
+
+  const signInStudent = useCallback(
+    (rollNumber: string) => {
+      const normalizedRoll = rollNumber.trim().toUpperCase();
+      const directory = readStudentNameMap();
+      const knownName = directory[normalizedRoll];
+      persistAccessSession({
+        displayName: knownName || `Student (${normalizedRoll})`,
+        rollNumber: normalizedRoll,
+        mode: 'student',
+      });
+    },
+    [persistAccessSession]
+  );
+
+  const registerStudent = useCallback(
+    (fullName: string, rollNumber: string) => {
+      const cleanName = fullName.trim();
+      const normalizedRoll = rollNumber.trim().toUpperCase();
+      try {
+        const directory = readStudentNameMap();
+        directory[normalizedRoll] = cleanName;
+        // Persist ONLY displayName by rollNumber — NEVER store passwords anywhere.
+        window.localStorage.setItem(STORAGE_KEYS.studentDirectory, JSON.stringify(directory));
+      } catch {
+        // Ignore storage access errors
+      }
+      persistAccessSession({
+        displayName: cleanName,
+        rollNumber: normalizedRoll,
+        mode: 'student',
+      });
+    },
+    [persistAccessSession]
+  );
+
+  const enterAsGuest = useCallback(() => {
+    persistAccessSession({
+      displayName: 'Guest',
+      mode: 'guest',
+    });
+  }, [persistAccessSession]);
+
+  const signOut = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem(SESSION_KEYS.accessSession);
+      window.sessionStorage.removeItem(SESSION_KEYS.legacyGuestEntered);
+    } catch {
+      // Ignore storage access errors
+    }
+    setIsSearchOpen(false);
+    setIsSavedModalOpen(false);
+    setPendingPrompt(null);
+    setActiveSession(createFreshSession());
+    setAccessSession(null);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   const openKnowledgeBaseCategory = useCallback(
     (cat: KnowledgeCategory) => {
       setKbCategoryPreset(cat);
-      setActivePage('knowledge-base');
+      navigate('knowledge-base');
       trackRecentlyViewed({
         id: `kb-cat-${cat}`,
-        title: `${cat} Knowledge Records`,
+        title: `${cat} Resources`,
         category: cat,
         type: 'page',
         targetPage: 'knowledge-base',
       });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [trackRecentlyViewed]
+    [navigate, trackRecentlyViewed]
   );
 
-  const openAssistantWithPrompt = useCallback((prompt: string) => {
-    setPendingPrompt(prompt);
-    setActivePage('assistant');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const openAssistantWithPrompt = useCallback(
+    (prompt: string) => {
+      setPendingPrompt(prompt);
+      navigate('assistant');
+    },
+    [navigate]
+  );
 
   const clearPendingPrompt = useCallback(() => {
     setPendingPrompt(null);
   }, []);
 
-  // Local Prototype Profile Actions (localStorage only)
-  const saveLocalProfile = useCallback(
-    (input: ProfileInput): StudentProfile => {
-      const now = new Date().toISOString();
-      const existingId = !userProfile.isGuest ? userProfile.id : `student-${Date.now()}`;
-      const profile: StudentProfile = {
-        id: existingId,
-        name: input.name.trim(),
-        programme: input.programme.trim() || 'B.Tech CSE',
-        year: input.year.trim() || '1st Year',
-        interests: input.interests.length > 0 ? input.interests : ['Coding & AI'],
-        preferredCategories:
-          input.preferredCategories.length > 0
-            ? input.preferredCategories
-            : ['Academics', 'Clubs & Societies'],
-        isGuest: false,
-        createdAt: !userProfile.isGuest ? userProfile.createdAt : now,
-        updatedAt: now,
-      };
-      setUserProfile(profile);
-      setSavedProfiles((prev) => [profile, ...prev.filter((p) => p.id !== profile.id)].slice(0, 5));
-      pushToast(`Saved local profile for ${profile.name} (browser only).`, 'success');
-      return profile;
-    },
-    [userProfile, pushToast]
-  );
-
-  const signInSavedProfile = useCallback(
-    (profileId: string): boolean => {
-      const found = savedProfiles.find((p) => p.id === profileId);
-      if (!found) return false;
-      setUserProfile({ ...found, isGuest: false, updatedAt: new Date().toISOString() });
-      pushToast(`Signed in locally as ${found.name}.`, 'success');
-      return true;
-    },
-    [savedProfiles, pushToast]
-  );
-
-  const quickSignInByName = useCallback(
-    (name: string): StudentProfile => {
-      const trimmed = name.trim();
-      const existing = savedProfiles.find(
-        (p) => p.name.toLowerCase() === trimmed.toLowerCase()
-      );
-      if (existing) {
-        const updated = { ...existing, isGuest: false, updatedAt: new Date().toISOString() };
-        setUserProfile(updated);
-        pushToast(`Welcome back, ${updated.name} (local browser profile).`, 'success');
-        return updated;
-      }
-      return saveLocalProfile({
-        name: trimmed,
-        programme: 'B.Tech CSE',
-        year: '1st Year',
-        interests: ['Coding & AI', 'Library & Research'],
-        preferredCategories: ['Academics', 'Library', 'Clubs & Societies'],
-      });
-    },
-    [savedProfiles, saveLocalProfile, pushToast]
-  );
-
-  const continueAsGuest = useCallback(() => {
-    setUserProfile(createGuestProfile());
-    setActivePage('home');
-    pushToast('Continuing in Guest mode.', 'info');
-  }, [pushToast]);
-
-  const logoutToGuest = useCallback(() => {
-    setUserProfile(createGuestProfile());
-    pushToast('Signed out of local browser profile (switched to Guest).', 'info');
-  }, [pushToast]);
-
-  // Merged KB
+  // Merged Campus Resources
   const knowledgeBase = useMemo<KnowledgeRecord[]>(() => {
     const deletedSet = new Set(deletedDemoIds);
     const byId = new Map<string, KnowledgeRecord>();
@@ -546,11 +598,13 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const existing = byId.get(custom.id);
       if (existing && existing.sourceType === 'official') continue;
       const desc = custom.content || custom.description;
-      const tags = custom.tags?.length ? custom.tags : custom.keywords;
-      const reviewed = custom.lastReviewedDate || custom.lastChecked || '2026-11-23';
+      const rawTags = custom.tags?.length ? custom.tags : custom.keywords;
+      const tags = Array.from(new Set(rawTags.map((t) => t.trim().toLowerCase()).filter(Boolean)));
+      const reviewed = custom.lastReviewedDate || custom.lastChecked || '2026-11-24';
       byId.set(custom.id, {
         ...custom,
-        subcategory: custom.subcategory || 'Custom Sample',
+        subcategory:
+          custom.subcategory && custom.subcategory !== custom.category ? custom.subcategory : 'Student Note',
         content: desc,
         description: desc,
         tags,
@@ -562,7 +616,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastChecked: reviewed,
         isPrototypeSample: true,
         freshnessStatus: 'demo-static',
-        freshnessNote: 'Saved on this device.',
+        freshnessNote: 'Added to your Campus Resources.',
         isCustomDemo: true,
       });
     }
@@ -570,135 +624,61 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return Array.from(byId.values());
   }, [customDemoRecords, deletedDemoIds]);
 
-  const activeSession = useMemo(() => {
-    if (isPresentationMode) return demoSession;
-    return userSessions.find((s) => s.id === activeUserSessionId) ?? userSessions[0] ?? createFreshSession();
-  }, [isPresentationMode, demoSession, userSessions, activeUserSessionId]);
-
-  const chatSessions = useMemo(
-    () => (isPresentationMode ? [demoSession] : userSessions),
-    [isPresentationMode, demoSession, userSessions]
-  );
-
-  const selectSession = useCallback(
-    (id: string) => {
-      if (isPresentationMode) return;
-      setActiveUserSessionId(id);
-    },
-    [isPresentationMode]
-  );
-
-  const createNewSession = useCallback(() => {
-    if (isPresentationMode) {
-      setDemoSession(createFreshSession('Professor Viva Demo Session', 'viva-demo'));
-      pushToast('Started a clean isolated presentation chat.', 'info');
-      return;
-    }
-    const fresh = createFreshSession();
-    setUserSessions((prev) => [fresh, ...prev]);
-    setActiveUserSessionId(fresh.id);
-    pushToast('New conversation started.', 'info');
-  }, [isPresentationMode, pushToast]);
-
   const clearActiveSession = useCallback(() => {
-    const fresh = createFreshSession(
-      isPresentationMode ? 'Professor Viva Demo Session' : 'New Campus Chat',
-      isPresentationMode ? 'viva-demo' : 'chat'
-    );
-    if (isPresentationMode) {
-      setDemoSession(fresh);
-      pushToast('Presentation chat cleared.', 'info');
-      return;
-    }
-    setUserSessions((prev) =>
-      prev.map((s) => (s.id === activeSession.id ? { ...fresh, id: s.id } : s))
-    );
-    pushToast('Current chat cleared.', 'info');
-  }, [isPresentationMode, activeSession.id, pushToast]);
+    setActiveSession(createFreshSession());
+    pushToast('Conversation cleared.', 'info');
+  }, [pushToast]);
 
-  const deleteSession = useCallback(
-    (id: string) => {
-      if (isPresentationMode) return;
-      setUserSessions((prev) => {
-        const remaining = prev.filter((s) => s.id !== id);
-        if (remaining.length === 0) {
-          const fresh = createFreshSession();
-          setActiveUserSessionId(fresh.id);
-          return [fresh];
-        }
-        if (activeUserSessionId === id) {
-          setActiveUserSessionId(remaining[0].id);
-        }
-        return remaining;
-      });
-    },
-    [isPresentationMode, activeUserSessionId]
-  );
-
-  const appendMessageToActive = useCallback(
-    (msg: ChatMessage, maybeTitle?: string) => {
-      const now = new Date().toISOString();
-      if (isPresentationMode) {
-        setDemoSession((prev) => ({
-          ...prev,
-          updatedAt: now,
-          messages: [...prev.messages, msg],
-        }));
-        return;
-      }
-
-      setUserSessions((prev) =>
-        prev.map((s) => {
-          if (s.id !== activeSession.id) return s;
-          const shouldRename = s.title === 'New Campus Chat' && maybeTitle;
-          return {
-            ...s,
-            title: shouldRename ? maybeTitle.slice(0, 44) : s.title,
-            updatedAt: now,
-            messages: [...s.messages, msg],
-          };
-        })
-      );
-    },
-    [isPresentationMode, activeSession.id]
-  );
+  const appendMessageToActive = useCallback((msg: ChatMessage, maybeTitle?: string) => {
+    const now = new Date().toISOString();
+    setActiveSession((prev) => ({
+      ...prev,
+      title: prev.title === 'Campus Assist' && maybeTitle ? maybeTitle.slice(0, 44) : prev.title,
+      updatedAt: now,
+      messages: [...prev.messages, msg],
+    }));
+  }, []);
 
   const setMessageFeedback = useCallback(
     (messageId: string, feedback: 'helpful' | 'not-helpful') => {
-      const updateMsgs = (msgs: ChatMessage[]) =>
-        msgs.map((m) => (m.id === messageId ? { ...m, feedback } : m));
-
-      if (isPresentationMode) {
-        setDemoSession((prev) => ({ ...prev, messages: updateMsgs(prev.messages) }));
-      } else {
-        setUserSessions((prev) =>
-          prev.map((s) => (s.id === activeSession.id ? { ...s, messages: updateMsgs(s.messages) } : s))
-        );
-      }
+      setActiveSession((prev) => ({
+        ...prev,
+        messages: prev.messages.map((m) => (m.id === messageId ? { ...m, feedback } : m)),
+      }));
       pushToast(
-        feedback === 'helpful' ? 'Thanks! Marked response as helpful.' : 'Feedback noted — we will refine retrieval.',
+        feedback === 'helpful' ? 'Marked response as helpful.' : 'Feedback noted.',
         'success'
       );
     },
-    [isPresentationMode, activeSession.id, pushToast]
+    [pushToast]
   );
 
-  // Knowledge Base Prototype Sample CRUD
+  // Campus Resources CRUD
   const addDemoRecord = useCallback(
     (
-      record: Pick<KnowledgeRecord, 'title' | 'category' | 'description' | 'keywords' | 'sourceUrl' | 'sourceName' | 'lastChecked'> & {
+      record: Pick<
+        KnowledgeRecord,
+        'title' | 'category' | 'description' | 'keywords' | 'sourceUrl' | 'sourceName' | 'lastChecked'
+      > & {
         subcategory?: string;
       }
     ) => {
+      const uniqueKeywords = Array.from(
+        new Set(record.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean))
+      );
+      const cleanSubcategory =
+        record.subcategory?.trim() && record.subcategory.trim() !== record.category
+          ? record.subcategory.trim()
+          : 'Student Note';
       const newRec: KnowledgeRecord = {
-        id: `kb-sample-custom-${Date.now()}`,
+        id: `resource-custom-${Date.now()}`,
         title: record.title,
         category: record.category,
-        subcategory: record.subcategory?.trim() || 'Custom Sample',
+        subcategory: cleanSubcategory,
         content: record.description,
         description: record.description,
-        tags: record.keywords,
-        keywords: record.keywords,
+        tags: uniqueKeywords,
+        keywords: uniqueKeywords,
         sourceUrl: record.sourceUrl,
         sourceName: record.sourceName,
         sourceType: 'demo',
@@ -708,11 +688,11 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastChecked: record.lastChecked,
         isPrototypeSample: true,
         freshnessStatus: 'demo-static',
-        freshnessNote: 'Saved on this device.',
+        freshnessNote: 'Added to your Campus Resources.',
         isCustomDemo: true,
       };
       setCustomDemoRecords((prev) => [newRec, ...prev]);
-      pushToast('Added new Prototype sample record (saved in this browser).', 'success');
+      pushToast('Added new campus resource.', 'success');
     },
     [pushToast]
   );
@@ -721,7 +701,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (id: string, updates: Partial<KnowledgeRecord>) => {
       const target = knowledgeBase.find((r) => r.id === id);
       if (!target || target.sourceType === 'official') {
-        pushToast('Verified source records are read-only.', 'warning');
+        pushToast('This resource cannot be modified.', 'warning');
         return;
       }
       const desc = updates.content ?? updates.description ?? target.description;
@@ -731,7 +711,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ...target,
         ...updates,
         id,
-        subcategory: updates.subcategory ?? target.subcategory ?? 'Custom Sample',
+        subcategory: updates.subcategory ?? target.subcategory ?? 'Student Note',
         content: desc,
         description: desc,
         tags,
@@ -743,14 +723,14 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastChecked: reviewed,
         isPrototypeSample: true,
         freshnessStatus: 'demo-static',
-        freshnessNote: 'Saved on this device.',
+        freshnessNote: 'Updated in your Campus Resources.',
         isCustomDemo: true,
       };
       setCustomDemoRecords((prev) => {
         const exists = prev.some((r) => r.id === id);
         return exists ? prev.map((r) => (r.id === id ? updated : r)) : [updated, ...prev];
       });
-      pushToast('Prototype sample record updated locally.', 'success');
+      pushToast('Campus resource updated.', 'success');
     },
     [knowledgeBase, pushToast]
   );
@@ -759,22 +739,22 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (id: string) => {
       const target = knowledgeBase.find((r) => r.id === id);
       if (!target || target.sourceType === 'official') {
-        pushToast('Verified source records are protected from deletion.', 'warning');
+        pushToast('This resource cannot be removed.', 'warning');
         return;
       }
       setCustomDemoRecords((prev) => prev.filter((r) => r.id !== id));
       setDeletedDemoIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-      pushToast('Prototype sample record removed.', 'info');
+      pushToast('Campus resource removed.', 'info');
     },
     [knowledgeBase, pushToast]
   );
 
-  // Club Registrations (Local Prototype Workflow)
+  // Student Activity Interests
   const registerClubInterest = useCallback(
     (reg: Omit<ClubRegistration, 'registeredAt'>) => {
       const entry: ClubRegistration = { ...reg, registeredAt: new Date().toISOString() };
       setClubRegistrations((prev) => [entry, ...prev.filter((r) => r.clubId !== reg.clubId)]);
-      pushToast(`Local prototype interest saved for ${reg.clubName} (browser only).`, 'success');
+      pushToast(`Saved interest in ${reg.clubName}.`, 'success');
     },
     [pushToast]
   );
@@ -782,41 +762,41 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const cancelClubInterest = useCallback(
     (clubId: string) => {
       setClubRegistrations((prev) => prev.filter((r) => r.clubId !== clubId));
-      pushToast('Local club interest removed.', 'info');
+      pushToast('Interest removed.', 'info');
     },
     [pushToast]
   );
 
-  // Event Registrations (Local Prototype Workflow)
+  // Event bookmark compatibility
   const toggleEventRegistration = useCallback(
     (eventId: string, eventTitle: string) => {
       setEventRegistrations((prev) => {
         const exists = prev.includes(eventId);
         if (exists) {
-          pushToast(`Removed RSVP for ${eventTitle}.`, 'info');
+          pushToast(`Removed bookmark for ${eventTitle}.`, 'info');
           return prev.filter((id) => id !== eventId);
         }
-        pushToast(`Saved RSVP for ${eventTitle} (browser storage only).`, 'success');
+        pushToast(`Saved bookmark for ${eventTitle}.`, 'success');
         return [...prev, eventId];
       });
     },
     [pushToast]
   );
 
-  // Helpdesk Tickets (Local Prototype Workflow)
+  // Support Requests
   const createDemoTicket = useCallback(
     (data: Pick<HelpdeskTicket, 'subject' | 'category' | 'description' | 'studentName' | 'priority'>) => {
       const now = new Date().toISOString();
       const num = 104 + tickets.length;
       const newTicket: HelpdeskTicket = {
-        id: `TKT-${num}`,
+        id: `REQ-${num}`,
         ...data,
         status: 'Submitted',
         createdAt: now,
         updatedAt: now,
       };
       setTickets((prev) => [newTicket, ...prev]);
-      pushToast(`Created ${newTicket.id} on this device.`, 'success');
+      pushToast(`Created support request ${newTicket.id}.`, 'success');
       return newTicket;
     },
     [tickets.length, pushToast]
@@ -827,7 +807,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setTickets((prev) =>
         prev.map((t) => (t.id === id ? { ...t, status, updatedAt: new Date().toISOString() } : t))
       );
-      pushToast(`Updated ${id} status to ${status} (local prototype).`, 'info');
+      pushToast(`Updated ${id} status to ${status}.`, 'info');
     },
     [pushToast]
   );
@@ -848,96 +828,46 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [pushToast]
   );
 
-  const isFavorite = useCallback(
-    (id: string) => favorites.some((f) => f.id === id),
-    [favorites]
-  );
+  const isFavorite = useCallback((id: string) => favorites.some((f) => f.id === id), [favorites]);
 
-  const recordRecentQuestion = useCallback((q: string) => {
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    setRecentQuestions((prev) => [trimmed, ...prev.filter((item) => item !== trimmed)].slice(0, 8));
-  }, []);
-
-  // Guided Presentation Demo Mode (isolated)
-  const startPresentationMode = useCallback(() => {
-    setDemoSession(createFreshSession('Professor Viva Demo Session', 'viva-demo'));
-    setPresentationStepIndex(0);
-    setIsPresentationMode(true);
-    setActivePage(PRESENTATION_TOUR_STEPS[0].page);
-    pushToast('Entered Guided Presentation Mode (user data isolated).', 'info');
-  }, [pushToast]);
-
-  const exitPresentationMode = useCallback(() => {
-    setIsPresentationMode(false);
-    setPendingPrompt(null);
-    pushToast('Exited Presentation Mode. Your regular data is intact.', 'info');
-  }, [pushToast]);
-
-  const goToPresentationStep = useCallback((idx: number) => {
-    const clamped = Math.max(0, Math.min(PRESENTATION_TOUR_STEPS.length - 1, idx));
-    setPresentationStepIndex(clamped);
-    setActivePage(PRESENTATION_TOUR_STEPS[clamped].page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  // Reset All User Data
-  const resetAllPrototypeData = useCallback(() => {
-    const fresh = createFreshSession();
-    setUserSessions([fresh]);
-    setActiveUserSessionId(fresh.id);
-    setUserProfile(createGuestProfile());
-    setSavedProfiles([]);
+  // Reset Saved Data
+  const resetSavedData = useCallback(() => {
+    setActiveSession(createFreshSession());
     setRecentlyViewed([]);
     setCustomDemoRecords([]);
     setDeletedDemoIds([]);
     setClubRegistrations([]);
     setEventRegistrations([]);
     setTickets(PRELOADED_DEMO_TICKETS);
-    setFavorites([
-      {
-        id: 'fac-library',
-        title: 'Central & Departmental Libraries',
-        type: 'facility',
-        targetPage: 'facilities',
-      },
-    ]);
-    setRecentQuestions([
-      'Tell me about the library.',
-      'What clubs can I join at Cedarbrook Campus?',
-      'Where can I find transport information?',
-    ]);
-    pushToast('All local prototype data reset to default state.', 'success');
+    setFavorites([]);
+    clearLegacyAssistantStorage();
+    pushToast('Saved items reset to default state.', 'success');
   }, [pushToast]);
 
   const value: CampusContextValue = {
     theme,
     toggleTheme,
+    accessSession,
+    hasEnteredDashboard,
+    signInStudent,
+    registerStudent,
+    enterAsGuest,
+    signOut,
+    returnToWelcome: signOut,
     activePage,
     navigate,
     openAssistantWithPrompt,
     pendingPrompt,
     clearPendingPrompt,
-    userProfile,
-    savedProfiles,
-    saveLocalProfile,
-    signInSavedProfile,
-    quickSignInByName,
-    continueAsGuest,
-    logoutToGuest,
     kbCategoryPreset,
     setKbCategoryPreset,
     openKnowledgeBaseCategory,
     recentlyViewed,
     trackRecentlyViewed,
-    chatSessions,
     activeSession,
-    selectSession,
-    createNewSession,
     clearActiveSession,
     appendMessageToActive,
     setMessageFeedback,
-    deleteSession,
     knowledgeBase,
     customDemoRecords,
     addDemoRecord,
@@ -954,13 +884,6 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     favorites,
     toggleFavorite,
     isFavorite,
-    recentQuestions,
-    recordRecentQuestion,
-    isPresentationMode,
-    presentationStepIndex,
-    startPresentationMode,
-    exitPresentationMode,
-    goToPresentationStep,
     systemStatus,
     reportAiMode,
     isSearchOpen,
@@ -970,7 +893,7 @@ export const CampusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toasts,
     pushToast,
     dismissToast,
-    resetAllPrototypeData,
+    resetSavedData,
   };
 
   return <CampusContext.Provider value={value}>{children}</CampusContext.Provider>;

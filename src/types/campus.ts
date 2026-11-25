@@ -6,9 +6,7 @@ export type PageId =
   | 'events'
   | 'academics'
   | 'services'
-  | 'knowledge-base'
-  | 'about'
-  | 'auth';
+  | 'knowledge-base';
 
 export type SourceType = 'official' | 'demo';
 
@@ -166,10 +164,16 @@ export interface FacilityItem {
   suggestedQuestion: string;
 }
 
+export interface AccessSession {
+  displayName: string;
+  rollNumber?: string;
+  mode: 'student' | 'guest';
+}
+
 export interface ClubItem {
   id: string;
   name: string;
-  category: 'Technical' | 'Media & Creative' | 'Cultural & Arts' | 'Literary & Debate' | 'Departmental';
+  category: 'Technical' | 'Media & Creative' | 'Cultural & Arts' | 'Literary & Debate' | 'Sports & Fitness' | 'Departmental';
   description: string;
   sourceType: SourceType;
   sourceLabel: VerificationStatus;

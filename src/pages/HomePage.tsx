@@ -11,44 +11,36 @@ import {
   GraduationCap,
   HeartHandshake,
   MessageSquare,
-  Presentation,
   Search,
-  Sparkles,
   Ticket,
-  UserCheck,
-  UserCircle,
   Users,
 } from 'lucide-react';
-import { SafeImage } from '../components/SafeImage';
-import { SourceLabel } from '../components/SourceLabel';
+import { HomeHeroIllustration } from '../components/HeroIllustrations';
 import { useCampus } from '../context/CampusContext';
 import {
-  CAMPUS_EVENTS,
-  CAMPUS_IMAGES,
   CLUBS_DIRECTORY,
   FACILITIES_DIRECTORY,
   OFFICIAL_QUICK_LINKS,
-  SOCIAL_CHANNELS,
+  STUDENT_ACTIVITIES_NOTICE,
 } from '../data/campusDirectory';
-import { filterCampusEvents, formatDisplayDate } from '../lib/events';
 import type { KnowledgeCategory } from '../types/campus';
 
 const HERO_QUICK_QUESTIONS = [
   {
-    q: 'Tell me about the library.',
-    hint: 'Hours, borrowing and study rooms',
+    q: 'What is the fees structure of all branches?',
+    hint: 'Fee structure overview',
   },
   {
-    q: 'What clubs can I join at Cedarbrook Campus?',
-    hint: 'Activities and meeting times',
+    q: 'Tell me about hostel facilities and rules',
+    hint: 'Hostel guidance',
   },
   {
-    q: 'Where can I find transport information?',
-    hint: 'Routes and shuttle passes',
+    q: 'Tell me about library services and hours',
+    hint: 'Library services',
   },
   {
-    q: 'Who is teaching my class tomorrow?',
-    hint: 'Guardrail · Hallucination prevention test',
+    q: 'Tell me about campus clubs and upcoming events',
+    hint: 'Activities & notices',
   },
 ];
 
@@ -75,80 +67,27 @@ export const HomePage: React.FC = () => {
     openKnowledgeBaseCategory,
     knowledgeBase,
     favorites,
-    recentQuestions,
     recentlyViewed,
-    userProfile,
-    startPresentationMode,
     setIsSavedModalOpen,
   } = useCampus();
 
   const [heroInput, setHeroInput] = useState('');
 
-  const officialCount = useMemo(
-    () => knowledgeBase.filter((r) => r.sourceType === 'official').length,
-    [knowledgeBase]
-  );
-  const sampleCount = useMemo(
-    () => knowledgeBase.filter((r) => r.sourceType === 'demo').length,
-    [knowledgeBase]
-  );
-
   const categoryStats = useMemo(() => {
-    const map = new Map<KnowledgeCategory, { total: number; verified: number }>();
+    const map = new Map<KnowledgeCategory, number>();
     for (const cat of CATEGORY_ORDER) {
-      map.set(cat, { total: 0, verified: 0 });
+      map.set(cat, 0);
     }
     for (const rec of knowledgeBase) {
-      const existing = map.get(rec.category) ?? { total: 0, verified: 0 };
-      existing.total += 1;
-      if (rec.sourceType === 'official') existing.verified += 1;
-      map.set(rec.category, existing);
+      map.set(rec.category, (map.get(rec.category) ?? 0) + 1);
     }
     return Array.from(map.entries())
-      .filter(([, counts]) => counts.total > 0)
-      .map(([category, counts]) => ({ category, ...counts }));
+      .filter(([, total]) => total > 0)
+      .map(([category, total]) => ({ category, total }));
   }, [knowledgeBase]);
 
-  const personalizedRecords = useMemo(() => {
-    const preferredCats = new Set(userProfile.preferredCategories);
-    const interestTokens = userProfile.interests
-      .flatMap((item) => item.toLowerCase().split(/[^a-z0-9]+/))
-      .filter((t) => t.length >= 3);
-
-    const scored = knowledgeBase.map((rec) => {
-      let score = 0;
-      if (preferredCats.has(rec.category)) score += 6;
-      if (rec.sourceType === 'official') score += 2.5;
-      const haystack = `${rec.title} ${rec.subcategory} ${rec.tags.join(' ')} ${rec.description}`.toLowerCase();
-      for (const tok of interestTokens) {
-        if (haystack.includes(tok)) score += 1.5;
-      }
-      return { rec, score };
-    });
-
-    scored.sort((a, b) => b.score - a.score);
-
-    // Ensure variety across categories in the top 6 cards
-    const picked: typeof knowledgeBase = [];
-    const seenCatCounts = new Map<string, number>();
-    for (const item of scored) {
-      const count = seenCatCounts.get(item.rec.category) ?? 0;
-      if (count >= 2 && picked.length < 4) continue;
-      picked.push(item.rec);
-      seenCatCounts.set(item.rec.category, count + 1);
-      if (picked.length === 4) break;
-    }
-    return picked;
-  }, [knowledgeBase, userProfile.interests, userProfile.preferredCategories]);
-
-  const allUpcomingEvents = useMemo(
-    () => filterCampusEvents(CAMPUS_EVENTS, { status: 'upcoming', category: 'All', search: '' }),
-    []
-  );
-  const upcomingEvents = useMemo(() => allUpcomingEvents.slice(0, 3), [allUpcomingEvents]);
-
   const featuredFacilities = FACILITIES_DIRECTORY.slice(0, 4);
-  const featuredClubs = CLUBS_DIRECTORY.slice(0, 4);
+  const featuredInterestAreas = CLUBS_DIRECTORY.slice(0, 4);
 
   const handleHeroSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,89 +102,34 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-9">
-      {/* Subtle Local Personalization Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              userProfile.isGuest
-                ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                : 'bg-[#1E3A8A]/10 dark:bg-[#0F766E]/25 text-[#1E3A8A] dark:text-teal-300'
-            }`}
-          >
-            {userProfile.isGuest ? (
-              <UserCircle className="w-5 h-5" aria-hidden="true" />
-            ) : (
-              <UserCheck className="w-5 h-5" aria-hidden="true" />
-            )}
-          </div>
-          <div className="min-w-0">
-            {userProfile.isGuest ? (
-              <>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                  Browsing as Guest Student
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Create a student profile to tailor recommendations by programme, year, and campus interests.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                  Welcome back, {userProfile.name}
-                  <span className="font-normal text-slate-500 dark:text-slate-400">
-                    {' '}
-                    · {userProfile.programme} ({userProfile.year})
-                  </span>
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  Tailored for {userProfile.preferredCategories.slice(0, 3).join(', ')}
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('auth')}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#1E3A8A] hover:bg-blue-900 dark:bg-[#0F766E] dark:hover:bg-teal-600 text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-        >
-          <span>{userProfile.isGuest ? 'Sign In / Personalize' : 'Edit Profile'}</span>
-          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-        </button>
-      </div>
-
       {/* Hero Section — Balanced 2-Column Split */}
-      <section className="rounded-2xl overflow-hidden bg-[#0B192C] text-white border border-slate-800">
+      <section className="rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B192C] via-[#0F2442] to-[#0B192C] text-white border border-slate-800">
         <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
           <div className="lg:col-span-7 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-6">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2 text-xs text-teal-300 font-medium">
-                <span>Cedarbrook Campus</span>
-                <span aria-hidden="true">·</span>
-                <span className="text-slate-300">First-Year B.Tech Prototype (Independent Project)</span>
+                <span>Student Information Hub · Designed for GLA University students</span>
               </div>
 
               <div className="space-y-2.5">
-                <h1 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-[2.75rem] leading-[1.1] tracking-tight text-white">
-                  AI Campus Helpdesk
+                <h1 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-[2.65rem] leading-[1.1] tracking-tight text-white">
+                  Campus Assist
                 </h1>
                 <p className="font-display font-semibold text-lg sm:text-xl text-blue-200">
-                  Your campus. Your questions. One smart assistant.
+                  Student Information Hub
                 </p>
                 <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
-                  Check library hours, plan your hostel budget or find a club to join.
+                  Explore campus facilities, library hours, indicative fee estimates, student interest areas, and support services in one place.
                 </p>
               </div>
 
-              {/* Primary AI Prompt Bar */}
-              <form onSubmit={handleHeroSubmit} className="pt-2 max-w-xl">
+              {/* Primary Search & Question Bar */}
+              <form onSubmit={handleHeroSubmit} className="pt-2 w-full max-w-2xl">
                 <label htmlFor="hero-ai-search" className="sr-only">
-                  Ask AI Campus Helpdesk a question
+                  Ask Campus Assist a question
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="relative flex-1">
+                  <div className="relative flex-1 min-w-0">
                     <Search
                       className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                       aria-hidden="true"
@@ -255,8 +139,8 @@ export const HomePage: React.FC = () => {
                       type="text"
                       value={heroInput}
                       onChange={(e) => setHeroInput(e.target.value)}
-                      placeholder="Ask about library, hostels, clubs, buses, placements..."
-                      className="w-full pl-10 pr-4 py-3 text-sm bg-white/10 text-white placeholder:text-slate-400 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+                      placeholder="Ask about library, fees, or hostels..."
+                      className="w-full pl-10 pr-3 py-3 text-sm bg-white/10 text-white placeholder:text-slate-300/85 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
                     />
                   </div>
                   <button
@@ -264,7 +148,7 @@ export const HomePage: React.FC = () => {
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     <MessageSquare className="w-4 h-4" aria-hidden="true" />
-                    <span>Ask Assistant</span>
+                    <span>Ask Campus Assist</span>
                   </button>
                 </div>
               </form>
@@ -273,53 +157,42 @@ export const HomePage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/10">
               <button
                 type="button"
-                onClick={startPresentationMode}
+                onClick={() => navigate('knowledge-base')}
                 className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-teal-200 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-400/25 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
               >
-                <Presentation className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Start Presentation Mode</span>
+                <Database className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Browse Campus Resources</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate('about')}
+                onClick={() => navigate('facilities')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors whitespace-nowrap cursor-pointer"
               >
-                <span>Inspect RAG Architecture</span>
+                <span>Explore Facilities</span>
                 <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          <div className="lg:col-span-5 relative min-h-[220px] lg:min-h-full">
-            <SafeImage
-              src={CAMPUS_IMAGES.hero}
-              alt="Architectural view of Cedarbrook Campus Mathura campus greenery and modern academic buildings"
-              fallbackTitle="Cedarbrook Campus Mathura — 110-Acre Campus"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0B192C]/85 via-[#0B192C]/20 to-transparent flex items-end p-5">
-              <div className="text-xs text-slate-200 leading-snug">
-                <span className="font-semibold text-white block">110-Acre Mathura Campus · NAAC A+</span>
-                <span>Cedarbrook Campus</span>
-              </div>
-            </div>
+          <div className="lg:col-span-5 relative min-h-[240px] lg:min-h-[300px] overflow-hidden">
+            <HomeHeroIllustration />
           </div>
         </div>
       </section>
 
-      {/* Dense Quantitative Stats Cards */}
-      <section aria-label="Knowledge Base Overview" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Overview Stats Cards */}
+      <section aria-label="Campus Resources Overview" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           type="button"
           onClick={() => navigate('knowledge-base')}
           className="text-left bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 rounded-xl p-4 sm:p-5 transition-colors cursor-pointer"
         >
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Knowledge Records</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Campus Resources</span>
           <p className="mt-1 font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white tabular-nums">
             {knowledgeBase.length}
           </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-            Campus handbook
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Student guides &amp; directories
           </p>
         </button>
 
@@ -328,7 +201,7 @@ export const HomePage: React.FC = () => {
           onClick={() => navigate('knowledge-base')}
           className="text-left bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 rounded-xl p-4 sm:p-5 transition-colors cursor-pointer"
         >
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Categories</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Topic Categories</span>
           <p className="mt-1 font-display font-bold text-2xl sm:text-3xl text-teal-700 dark:text-teal-300 tabular-nums">
             {categoryStats.length}
           </p>
@@ -347,57 +220,51 @@ export const HomePage: React.FC = () => {
             {favorites.length}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Pinned locally in your browser
+            Bookmarked for quick access
           </p>
         </button>
 
         <button
           type="button"
-          onClick={() => navigate('events')}
+          onClick={() => navigate('clubs')}
           className="text-left bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 rounded-xl p-4 sm:p-5 transition-colors cursor-pointer"
         >
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Upcoming Activities</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Interest Areas</span>
           <p className="mt-1 font-display font-bold text-2xl sm:text-3xl text-amber-700 dark:text-amber-300 tabular-nums">
-            {allUpcomingEvents.length}
+            {CLUBS_DIRECTORY.length}
           </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-            {CLUBS_DIRECTORY.length} clubs
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Student activities &amp; official notices
           </p>
         </button>
       </section>
 
       {/* Quick Actions Strip */}
-      <section aria-label="Quick Actions" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <section aria-label="Quick Actions" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
-            label: 'Ask AI Assistant',
-            sub: 'Grounded RAG chat',
+            label: 'Ask Campus Assist',
+            sub: 'Get quick campus answers',
             icon: MessageSquare,
             onClick: () => navigate('assistant'),
           },
           {
-            label: 'Knowledge Base',
-            sub: `${knowledgeBase.length} records`,
+            label: 'Campus Resources',
+            sub: `${knowledgeBase.length} searchable guides`,
             icon: Database,
             onClick: () => navigate('knowledge-base'),
           },
           {
-            label: 'Submit Local Ticket',
-            sub: 'Track your request',
+            label: 'Request Support',
+            sub: 'Submit and track requests',
             icon: Ticket,
             onClick: () => navigate('services'),
           },
           {
-            label: 'Upcoming Events',
-            sub: 'Calendar & local RSVP',
+            label: 'Activities & Notices',
+            sub: 'Official channels & interest areas',
             icon: Calendar,
             onClick: () => navigate('events'),
-          },
-          {
-            label: 'Presentation Mode',
-            sub: 'Guided project demo',
-            icon: Presentation,
-            onClick: startPresentationMode,
           },
         ].map((act) => {
           const Icon = act.icon;
@@ -406,16 +273,16 @@ export const HomePage: React.FC = () => {
               key={act.label}
               type="button"
               onClick={act.onClick}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 hover:border-[#1E3A8A] dark:hover:border-teal-400 text-left transition-colors cursor-pointer"
+              className="flex items-start gap-3 p-3.5 rounded-xl bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 hover:border-[#1E3A8A] dark:hover:border-teal-400 text-left transition-colors cursor-pointer"
             >
-              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-[#1E3A8A] dark:text-teal-300">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-[#1E3A8A] dark:text-teal-300 mt-0.5">
                 <Icon className="w-4 h-4" aria-hidden="true" />
               </div>
-              <div className="min-w-0">
-                <span className="block text-xs font-semibold text-slate-900 dark:text-white truncate">
+              <div className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold text-slate-900 dark:text-white leading-snug">
                   {act.label}
                 </span>
-                <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
                   {act.sub}
                 </span>
               </div>
@@ -424,79 +291,19 @@ export const HomePage: React.FC = () => {
         })}
       </section>
 
-      {/* Personalized For You Section */}
-      <section aria-labelledby="personalized-heading" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <h2 id="personalized-heading" className="font-display font-bold text-xl text-slate-900 dark:text-white">
-              Personalized for you
-            </h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-              {userProfile.isGuest
-                ? 'Recommended campus records based on default first-year preferences — customize anytime.'
-                : `Curated for ${userProfile.name} (${userProfile.programme}, ${userProfile.year}) across ${userProfile.preferredCategories.slice(0, 3).join(', ')}.`}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('auth')}
-            className="text-sm font-semibold text-[#1E3A8A] dark:text-teal-300 hover:underline whitespace-nowrap cursor-pointer self-start sm:self-auto"
-          >
-            Edit preferences
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {personalizedRecords.map((rec) => (
-            <div
-              key={rec.id}
-              className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between gap-3"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                    {rec.category}
-                  </span>
-                  <SourceLabel type={rec.sourceType} compact />
-                </div>
-                <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white leading-snug line-clamp-2">
-                  {rec.title}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
-                  {rec.description}
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <button
-                  type="button"
-                  onClick={() => openKnowledgeBaseCategory(rec.category)}
-                  className="font-semibold text-[#1E3A8A] dark:text-blue-400 hover:underline cursor-pointer"
-                >
-                  View in KB
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAssistantWithPrompt(`Tell me about ${rec.title}`)}
-                  className="font-medium text-slate-600 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-teal-300 cursor-pointer"
-                >
-                  Ask AI
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Explore by Category Interactive Grid */}
       <section aria-labelledby="explore-categories-heading" className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 id="explore-categories-heading" className="font-display font-bold text-xl text-slate-900 dark:text-white flex items-center gap-2">
+            <h2
+              id="explore-categories-heading"
+              className="font-display font-bold text-xl text-slate-900 dark:text-white flex items-center gap-2"
+            >
               <Compass className="w-5 h-5 text-[#0F766E] dark:text-teal-300" aria-hidden="true" />
               <span>Explore by category</span>
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-              Select any topic to jump straight into filtered Knowledge Base records.
+              Select a topic to browse Campus Resources.
             </p>
           </div>
           <button
@@ -504,7 +311,7 @@ export const HomePage: React.FC = () => {
             onClick={() => navigate('knowledge-base')}
             className="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
           >
-            All {knowledgeBase.length} records
+            All {knowledgeBase.length} resources
           </button>
         </div>
 
@@ -524,8 +331,8 @@ export const HomePage: React.FC = () => {
                   {item.total}
                 </span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-                {item.verified > 0 ? `${item.verified} verified` : 'Campus guides'}
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Campus guides
               </p>
             </button>
           ))}
@@ -540,7 +347,7 @@ export const HomePage: React.FC = () => {
               Popular questions
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-              Click any prompt to launch a grounded RAG conversation with source citations.
+              Select a topic below to open Campus Assist directly.
             </p>
           </div>
           <button
@@ -548,7 +355,7 @@ export const HomePage: React.FC = () => {
             onClick={() => navigate('assistant')}
             className="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
           >
-            Open Full Assistant
+            Open Campus Assist
           </button>
         </div>
 
@@ -579,7 +386,6 @@ export const HomePage: React.FC = () => {
 
       {/* Featured Campus Facilities + Popular Student Services */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Facilities */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">
@@ -601,10 +407,9 @@ export const HomePage: React.FC = () => {
                 className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between gap-3"
               >
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{fac.category}</span>
-                    <SourceLabel type="official" compact />
-                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    {fac.category}
+                  </span>
                   <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white">
                     {fac.name}
                   </h3>
@@ -625,7 +430,7 @@ export const HomePage: React.FC = () => {
                     onClick={() => openAssistantWithPrompt(fac.suggestedQuestion)}
                     className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-teal-300 cursor-pointer"
                   >
-                    Ask AI
+                    Ask Campus Assist
                   </button>
                 </div>
               </div>
@@ -633,7 +438,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Popular Student Services & Portals */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">
@@ -651,32 +455,28 @@ export const HomePage: React.FC = () => {
           <div className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
             {[
               {
-                title: 'Campus Desk Student Portal',
-                desc: 'Tuition calculator, timetable and exams.',
+                title: 'Academics & Fee Estimator',
+                desc: 'Estimate annual tuition, view the reference timetable, and check exam dates.',
                 action: () => navigate('academics'),
                 icon: GraduationCap,
-                type: 'official' as const,
               },
               {
-                title: 'Anti-Ragging & Campus Safety',
-                desc: 'Contact Student Services through your ticket tracker.',
+                title: 'Student Welfare & Campus Safety',
+                desc: 'Access guidance and reach Student Services for support.',
                 action: () => navigate('services'),
                 icon: HeartHandshake,
-                type: 'official' as const,
               },
               {
-                title: 'Ticket Tracker',
-                desc: 'Submit a browser-local support ticket and track status.',
+                title: 'Request Support',
+                desc: 'Submit a campus support request and follow its status.',
                 action: () => navigate('services'),
-                icon: Sparkles,
-                type: 'demo' as const,
+                icon: Ticket,
               },
               {
-                title: `Searchable ${knowledgeBase.length}-Record Knowledge Base`,
-                desc: 'Browse the campus handbook and add your own records.',
+                title: `Campus Resources (${knowledgeBase.length} Guides)`,
+                desc: 'Browse campus directories, guidance records, and student resources.',
                 action: () => navigate('knowledge-base'),
                 icon: Building2,
-                type: 'official' as const,
               },
             ].map((srv) => {
               const Icon = srv.icon;
@@ -691,12 +491,9 @@ export const HomePage: React.FC = () => {
                     <Icon className="w-4.5 h-4.5 text-blue-700 dark:text-teal-300" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
-                        {srv.title}
-                      </span>
-                      <SourceLabel type={srv.type} compact />
-                    </div>
+                    <span className="font-semibold text-sm text-slate-900 dark:text-white truncate block">
+                      {srv.title}
+                    </span>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
                       {srv.desc}
                     </p>
@@ -708,17 +505,16 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Upcoming Prototype Events & Club Highlights */}
+      {/* Student Activities & Official Notices */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Upcoming Events */}
         <div className="lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">
-                Upcoming Campus Events
+                Student Activities &amp; Notices
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Date-calculated schedule · Expired events move automatically to Past
+                Official announcements and communication channels
               </p>
             </div>
             <button
@@ -726,50 +522,39 @@ export const HomePage: React.FC = () => {
               onClick={() => navigate('events')}
               className="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
             >
-              Open Calendar
+              Open Notices
             </button>
           </div>
 
-          <div className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
-            {upcomingEvents.map((evt) => (
-              <div key={evt.id} className="p-4 flex items-start justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                    <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-teal-400 shrink-0" aria-hidden="true" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">
-                      {formatDisplayDate(evt.date)}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>{evt.category}</span>
-                    <span aria-hidden="true">·</span>
-                    <SourceLabel type={evt.sourceType} compact />
-                  </div>
-                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                    {evt.title}
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">{evt.organizer}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('events')}
-                  className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+          <div className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+              {STUDENT_ACTIVITIES_NOTICE}
+            </p>
+            <div className="space-y-2 text-xs">
+              {OFFICIAL_QUICK_LINKS.slice(0, 3).map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg bg-slate-50 dark:bg-[#091426] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 text-slate-800 dark:text-slate-200 transition-colors"
                 >
-                  Details
-                </button>
-              </div>
-            ))}
+                  <span className="font-medium truncate">{link.label}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Club Highlights */}
         <div className="lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">
-                Club &amp; Society Highlights
+                Student Interest Areas
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Browse societies and save your interests
+                General activity categories — not official club listings
               </p>
             </div>
             <button
@@ -777,26 +562,25 @@ export const HomePage: React.FC = () => {
               onClick={() => navigate('clubs')}
               className="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
             >
-              Explore {CLUBS_DIRECTORY.length} Clubs
+              Explore {CLUBS_DIRECTORY.length} Areas
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {featuredClubs.map((club) => (
+            {featuredInterestAreas.map((area) => (
               <div
-                key={club.id}
+                key={area.id}
                 className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between gap-3"
               >
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{club.category}</span>
-                    <SourceLabel type={club.sourceType} compact />
-                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    {area.category}
+                  </span>
                   <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white">
-                    {club.name}
+                    {area.name}
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                    {club.description}
+                    {area.description}
                   </p>
                 </div>
                 <button
@@ -805,7 +589,7 @@ export const HomePage: React.FC = () => {
                   className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 dark:text-teal-300 hover:underline self-start cursor-pointer"
                 >
                   <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Explore club</span>
+                  <span>Explore area</span>
                 </button>
               </div>
             ))}
@@ -813,16 +597,13 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Social & Campus Community Section */}
-      
-
-      {/* Recently Viewed, Saved Resources, Recent Questions & Official University Links */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
+      {/* Bottom Grid: Recently Viewed & Saved + Helpful Resources */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-7 bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-display font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#0F766E] dark:text-teal-300" aria-hidden="true" />
-              <span>Recently viewed &amp; Saved</span>
+              <span>Recently Viewed &amp; Saved Resources</span>
             </h2>
             <button
               type="button"
@@ -833,15 +614,15 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
 
-          <div className="space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Recently viewed</span>
               {recentlyViewed.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Inspect any Knowledge Base record, facility, club, or event to see your recent history here.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                  Open any campus resource, facility, or activity area to keep recent items here.
                 </p>
               ) : (
-                <div className="mt-1.5 space-y-1.5">
+                <div className="mt-2 space-y-1.5">
                   {recentlyViewed.slice(0, 4).map((item) => (
                     <button
                       key={item.id}
@@ -857,21 +638,23 @@ export const HomePage: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="sm:border-l sm:border-slate-100 sm:dark:border-slate-800 sm:pl-4">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Bookmark className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-teal-300" aria-hidden="true" />
                 <span>Saved Resources</span>
               </span>
               {favorites.length === 0 ? (
-                <p className="text-xs text-slate-500 mt-1">Bookmark facilities or records to pin them here.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                  No saved resources yet. Bookmark any facility or guide to pin it here.
+                </p>
               ) : (
-                <div className="mt-1.5 space-y-1.5">
-                  {favorites.slice(0, 3).map((fav) => (
+                <div className="mt-2 space-y-1.5">
+                  {favorites.slice(0, 4).map((fav) => (
                     <button
                       key={fav.id}
                       type="button"
                       onClick={() => navigate(fav.targetPage)}
-                      className="w-full text-left px-3 py-2 text-xs font-medium bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-slate-800 dark:text-slate-200 flex items-center justify-between cursor-pointer"
+                      className="w-full text-left px-3 py-2 text-xs font-medium bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-slate-800 dark:text-slate-200 flex items-center justify-between gap-2 cursor-pointer"
                     >
                       <span className="truncate">{fav.title}</span>
                       <ArrowRight className="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden="true" />
@@ -880,26 +663,56 @@ export const HomePage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Recent AI Questions</span>
-              <div className="mt-1.5 space-y-1.5">
-                {recentQuestions.slice(0, 3).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => openAssistantWithPrompt(q)}
-                    className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg truncate cursor-pointer"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        </section>
+        {/* Helpful Resources Card */}
+        <div className="lg:col-span-5 bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-3">
+            <div>
+              <h2 className="font-display font-bold text-base text-slate-900 dark:text-white">
+                Helpful Resources
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Quick campus categories and official GLA University links.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Campus Facilities', page: 'facilities' as const },
+                { label: 'Academics & Fees', page: 'academics' as const },
+                { label: 'Student Services', page: 'services' as const },
+                { label: 'Activities & Notices', page: 'events' as const },
+              ].map((cat) => (
+                <button
+                  key={cat.label}
+                  type="button"
+                  onClick={() => navigate(cat.page)}
+                  className="px-3 py-2 rounded-lg text-left text-xs font-medium bg-slate-50 dark:bg-[#091426] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2 pt-1 text-xs">
+              {OFFICIAL_QUICK_LINKS.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#091426] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-teal-400 text-slate-800 dark:text-slate-200 transition-colors"
+                >
+                  <span className="font-medium truncate">{link.label}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

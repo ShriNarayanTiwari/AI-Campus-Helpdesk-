@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Campus Helpdesk</title>
+    <title>Campus Assist — Student Information Hub</title>
     <meta
       name="description"
-      content="Explore Cedarbrook Campus campus facilities, academics, clubs, events, and student services with a RAG-powered AI campus helpdesk prototype."
+      content="Campus Assist — Student Information Hub designed for GLA University students. Find student resources, campus services, academics, clubs, events, and support in one place."
     />
-    <meta property="og:title" content="AI Campus Helpdesk" />
+    <meta property="og:title" content="Campus Assist — Student Information Hub" />
     <meta
       property="og:description"
-      content="Explore Cedarbrook Campus campus facilities, academics, clubs, events, and student services with a RAG-powered AI campus helpdesk prototype."
+      content="Find student resources, campus services, and helpful information in one place. Designed for GLA University students."
     />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -29,7 +29,9 @@
     <script>
       (function () {
         try {
-          var saved = localStorage.getItem('gla_campus_ai_theme');
+          var saved =
+            localStorage.getItem('campus_assist_theme') ||
+            localStorage.getItem('gla_campus_ai_theme');
           if (saved === 'dark') {
             document.documentElement.classList.add('dark');
           } else if (saved === 'light') {

@@ -1,47 +1,337 @@
 import type { KnowledgeCategory, KnowledgeRecord } from '../types/campus.ts';
-import { CLUBS_DIRECTORY, CAMPUS_EVENTS, DEMO_TIMETABLE } from './campusDirectory.ts';
+import {
+  CLUBS_DIRECTORY,
+  DEMO_TIMETABLE,
+  STUDENT_ACTIVITIES_NOTICE,
+} from './campusDirectory.ts';
 
-export const fees = { tuition: { 'B.Tech': 120000, BCA: 80000, BBA: 76000 }, ac: 72000, standard: 48000, mess: 30000, deposit: 5000 };
+export const fees = {
+  tuition: { 'B.Tech': 120000, BCA: 80000, BBA: 76000 },
+  ac: 72000,
+  standard: 48000,
+  mess: 30000,
+  deposit: 5000,
+};
+
 export const money = (v: number) => '₹' + v.toLocaleString('en-IN');
-export const total = (tuition: number, room: number, meals: boolean) => tuition + room + (meals ? fees.mess : 0) + (room ? fees.deposit : 0);
-export const hours = { weekdays: '8 AM to 8 PM', Saturday: '9 AM to 6 PM', Sunday: '10 AM to 5 PM' };
+
+export const total = (tuition: number, room: number, meals: boolean) =>
+  tuition + room + (meals ? fees.mess : 0) + (room ? fees.deposit : 0);
+
+export const hours = {
+  weekdays: '8 AM to 8 PM',
+  Saturday: '9 AM to 6 PM',
+  Sunday: '10 AM to 5 PM',
+};
+
 export const exams = [
-  {program:'B.Tech', semester:1, subject:'Engineering Mathematics', date:'2026-12-11'},
-  {program:'B.Tech', semester:1, subject:'Digital Electronics', date:'2026-12-14'},
-  {program:'BCA', semester:1, subject:'Programming Fundamentals', date:'2026-12-12'},
-  {program:'BBA', semester:1, subject:'Business Communication', date:'2026-12-15'},
+  { program: 'B.Tech', semester: 1, subject: 'Engineering Mathematics', date: '2026-12-11' },
+  { program: 'B.Tech', semester: 1, subject: 'Digital Electronics', date: '2026-12-14' },
+  { program: 'BCA', semester: 1, subject: 'Programming Fundamentals', date: '2026-12-12' },
+  { program: 'BBA', semester: 1, subject: 'Business Communication', date: '2026-12-15' },
 ];
-type Entry = [string, KnowledgeCategory, string, string, string];
+
+const FEE_REFERENCE_NOTE =
+  'Figures are indicative. Verify current fees through official GLA University channels.';
+const CAMPUS_REFERENCE_NOTE =
+  '(For guidance — verify through official GLA University channels)';
+
+type Entry = [string, KnowledgeCategory, string, string, string, string];
+
+const dayTitleLabel = (day: string) =>
+  day.charAt(0).toUpperCase() + day.slice(1);
+
 const entries: Entry[] = [
- ['library','Library','Central Library','library library facilities books librarian','The Central Library has quiet desks, group-study rooms, printing and e-books. Bring your campus ID to borrow up to four books for 14 days.'],
- ...Object.entries(hours).map(([day,time]):Entry=>['hours-'+day,'Library',day+' library hours','library timings opening closing hours '+day,'The library is open '+time+' on '+day+'.']),
- ['hostel','Hostels & Mess','Hostel rooms','hostel accommodation residential hostel facilities laundry','Double AC and non-AC rooms include Wi-Fi, laundry access and a shared common room. Mess is a separate annual plan.'],
- ['rooms','Hostels & Mess','Room fees','hostel room fees compare double cheaper rent','Double non-AC costs '+money(fees.standard)+'/year ('+money(fees.standard/2)+'/semester) and double AC costs '+money(fees.ac)+'/year ('+money(fees.ac/2)+'/semester). Both exclude mess. A one-time refundable hostel deposit of '+money(fees.deposit)+' applies. Single and triple room fees are not listed in this demo knowledge base. [Sample Demo Data — verify official GLA University Mathura fee circular]'],
- ['mess','Hostels & Mess','Mess plan','food mess dining meals include cheaper','Neither room includes mess. The optional mess plan costs '+money(fees.mess)+'/year ('+money(fees.mess/2)+'/semester) for breakfast, lunch and dinner. [Sample Demo Data — verify official GLA University Mathura fee circular]'],
- ...Object.entries(fees.tuition).map(([p,v]):Entry=>['tuition-'+p,'Academics',p+' tuition',p+' tuition annual fee semester instalment',p+' tuition is '+money(v)+'/year ('+money(v/2)+'/semester) [Sample Demo Data — verify official GLA University Mathura fee circular]. Hostel and meals are optional extras.']),
- ['aid','Academics','Scholarships and refunds','scholarship refund payment','Students scoring 90% or higher in their qualifying exam can apply at the academic desk for a 10% tuition scholarship. Room deposits are refundable after clearance.'],
- ['services','Student Services','Student services','student services help desk','Student Services handles ID replacements, Wi-Fi faults, room maintenance and counselling appointments. Open Student Services to raise and track a ticket.'],
- ['wifi','Student Services','Wi-Fi support','wifi wi-fi internet network broken hostel','Reconnect to Cedarbrook Student Wi-Fi and sign in again. If it still fails, open Student Services and raise an IT & Wi-Fi ticket with your block and room.'],
- ['travel','Transport','Shuttle route','bus shuttle transport pass timings','The shuttle runs Main Gate → Market Square → Lake Stop every 30 minutes from 7 AM to 7 PM. A term pass costs ₹2,000 at the transport desk.'],
- ['map','Campus Facilities','Main Gate to Central Library','directions walk map main gate route library','Walk from Main Gate to Welcome Court, turn left at Science Hall and follow the courtyard path to the Central Library entrance.'],
- ['fac','Campus Facilities','Campus facilities','facilities campus sports labs medical','Facilities include the Central Library, computing labs, sports courts, residential halls and a health desk at Welcome Court.'],
- ['id-card','Student Services','Replacement ID card','lost id card replacement reissue identity','For a lost ID, raise a Student Welfare ticket with your programme and year. The Welcome Court desk issues a replacement in two working days for ₹100.'],
- ['repair','Student Services','Room repairs','maintenance broken tap plumbing light fan repair','For a room repair, choose Hostel & Mess in Student Services. Include your block, room and the faulty item; you can follow the status in the ticket tracker.'],
- ['care','Student Services','Counselling appointments','counselling counseling counsellor stress appointment','Request a private appointment at the wellbeing desk in Welcome Court, Monday to Friday, 10 AM to 4 PM.'],
- ['health','Campus Facilities','Health desk','medical clinic nurse health sick','The health desk is in Welcome Court. It offers first-aid assistance from 8 AM to 6 PM on teaching days.'],
- ['sports','Campus Facilities','Sports courts','sports basketball badminton courts gym','Book a one-hour court slot at the sports desk beside Science Hall. Badminton and basketball courts open from 6 AM to 8 PM.'],
- ['labs','Campus Facilities','Computing labs','engineering computer computing lab computers practical','Computing labs are on the ground floor of Science Hall. Bring your student ID; supervised open practice runs weekdays from 4 PM to 6 PM.'],
- ['laundry','Hostels & Mess','Laundry collection','laundry washing clothes hostel','Drop labelled clothes at the residential laundry counter on Tuesday or Friday, 7 AM to 9 AM. Collect them the following evening.'],
- ['print','Library','Printing','printing printer photocopy scan','Printing is available beside the library issue desk at ₹2 per black-and-white page. Bring your campus ID.'],
- ['study','Library','Group-study bookings','group study booking reserve rooms','Reserve a group-study room at the library desk for up to two hours. Bring the IDs of at least two group members.'],
- ['meal-hours','Hostels & Mess','Dining hours','breakfast lunch dinner mess timings','Breakfast runs 7:30–9 AM, lunch 12:30–2 PM and dinner 7:30–9 PM in the residential dining hall.'],
- ['department','Academics','Programmes and departments','courses programmes department admission','Cedarbrook offers B.Tech through Engineering, BCA through Computing and BBA through Business Studies.'],
- ['intern','Placements','Internship applications','internships apply cv application portfolio','Bring a one-page CV and a project sample to the Career Studio. Internship application reviews run Wednesdays at 3 PM.'],
- ['welcome','Campus Life','First-week checklist','orientation fresher induction checklist','Collect your ID at Welcome Court, activate student Wi-Fi, check your timetable in Academics and pick a club to visit.'],
- ['career','Placements','Career studio','placements internship careers workshops','The Career Studio runs Friday résumé clinics, mock interviews and internship workshops in Science Hall. Bring a draft résumé.'],
- ['clubs','Clubs & Societies','Clubs you can join','clubs societies join','You can join '+CLUBS_DIRECTORY.map(c=>c.name).join(', ')+'. Open Clubs, select a club and choose Register Interest.'],
- ...CLUBS_DIRECTORY.map((c):Entry=>[c.id,'Clubs & Societies',c.name,c.name,c.description+' '+c.demoSchedule+' '+c.demoVenueNote]),
- ...CAMPUS_EVENTS.map((e):Entry=>[e.id,'Campus Events',e.title,e.title+' event',e.title+' takes place on '+e.date+' at '+e.startTime+' in '+e.venue+'. RSVP in Events.']),
- ...DEMO_TIMETABLE.map((s,i):Entry=>['slot-'+i,'Academics',s.subject,s.day+' timetable '+s.subject,s.day+' '+s.time+' · '+s.subject+' · '+s.room+'.']),
+  [
+    'library',
+    'Library',
+    'Facilities & Borrowing',
+    'Central Library',
+    'library facilities books librarian opac reading borrowing services',
+    'The Central Library offers quiet reading desks, group-study rooms, printing, and e-books. Bring your student ID to borrow up to four books for 14 days.',
+  ],
+  ...Object.entries(hours).map(
+    ([day, time]): Entry => [
+      'hours-' + day,
+      'Library',
+      'Opening Hours',
+      dayTitleLabel(day) + ' Library Hours',
+      'library timings opening closing hours ' + day.toLowerCase(),
+      'The library is open ' + time + ' on ' + day + '.',
+    ]
+  ),
+  [
+    'hostel-guidance',
+    'Hostels & Mess',
+    'Facilities & Guidance',
+    'Hostel Facilities and General Guidance',
+    'hostel hostels facilities rules guidance accommodation rooms wifi maintenance residence allocation',
+    'Double Non-AC and Double AC room categories are listed in the Campus Assist fee estimator; single and triple room categories are not listed here. Common residence-support topics include campus Wi-Fi assistance, shared common spaces, and logging room maintenance requests through Student Services. Final hostel policies, entry timings, and room allocations vary by residence block. For residence-specific rules, timings, and allocation details, verify through official hostel administration.',
+  ],
+  [
+    'hostel',
+    'Hostels & Mess',
+    'Accommodation',
+    'Residential Hostel Overview',
+    'hostel accommodation residential rooms facilities shared lounge',
+    'Campus Assist lists Double Non-AC and Double AC categories in the fee estimator, along with Wi-Fi and maintenance support guidance. Mess is a separate optional plan. For residence-specific rules, timings, and allocation details, verify through official hostel administration.',
+  ],
+  [
+    'rooms',
+    'Hostels & Mess',
+    'Hostel Charges',
+    'Hostel Room Fees',
+    'hostel room fees compare double ac non-ac cheaper rent deposit',
+    `Double non-AC is listed at ${money(fees.standard)} per year (${money(fees.standard / 2)} per semester) and Double AC at ${money(fees.ac)} per year (${money(fees.ac / 2)} per semester). Both exclude mess. A one-time refundable hostel deposit of ${money(fees.deposit)} applies. Single and triple room fees are not listed here. ${FEE_REFERENCE_NOTE}`,
+  ],
+  [
+    'mess',
+    'Hostels & Mess',
+    'Dining & Meals',
+    'Mess Dining Plan',
+    'food mess dining meals include cheaper annual plan',
+    `Neither room category includes mess. The optional mess plan is listed at ${money(fees.mess)} per year (${money(fees.mess / 2)} per semester) for daily meals. ${FEE_REFERENCE_NOTE}`,
+  ],
+  ...Object.entries(fees.tuition).map(
+    ([p, v]): Entry => [
+      'tuition-' + p,
+      'Academics',
+      'Tuition Fees',
+      p + ' Tuition Fee',
+      p.toLowerCase() + ' tuition annual fee semester instalment',
+      `${p} tuition is listed at ${money(v)} per year (${money(v / 2)} per semester). Hostel and mess plans are optional extras. ${FEE_REFERENCE_NOTE}`,
+    ]
+  ),
+  [
+    'aid',
+    'Academics',
+    'Financial Aid',
+    'Scholarships & Refunds',
+    'scholarship refund payment merit financial aid',
+    `Merit scholarship eligibility and refund terms are governed by university policy; confirm current scholarship criteria and fee refund rules through official GLA University channels.`,
+  ],
+  [
+    'services',
+    'Student Services',
+    'Helpdesk & Support',
+    'Student Services Desk',
+    'student services help desk support requests welfare',
+    'Student Services supports ID replacement inquiries, campus Wi-Fi troubleshooting, hostel room maintenance requests, and general student assistance. Open Student Services to submit and track a support request.',
+  ],
+  [
+    'wifi',
+    'Student Services',
+    'IT & Network',
+    'Campus & Hostel Wi-Fi Support',
+    'wifi wi-fi internet network broken hostel login',
+    'Reconnect to GLA Student Wi-Fi and sign in again with your student credentials. If connectivity issues persist, open Student Services and submit an IT & Wi-Fi support request with your hostel block and room number.',
+  ],
+  [
+    'travel',
+    'Transport',
+    'Commute & Transport',
+    'Campus Transport Guidance',
+    'bus buses shuttle transport route routes commute pass timings',
+    `Campus transport routes, bus timings, and pass charges vary by route and academic term. Verify current bus schedules, boarding points, and official transport fees with the GLA University Transport Office. ${CAMPUS_REFERENCE_NOTE}`,
+  ],
+  [
+    'map',
+    'Campus Facilities',
+    'Campus Navigation',
+    'Campus Navigation Guidance',
+    'directions walk map main gate route library courtyard',
+    'Follow the main campus signage from the Main Gate toward the academic blocks and the Central Library, or ask at the Main Gate security or Student Services desk for block-specific directions.',
+  ],
+  [
+    'fac',
+    'Campus Facilities',
+    'Facilities Overview',
+    'Campus Facilities Overview',
+    'facilities sports labs medical clinic dining halls',
+    'Campus facilities covered in Campus Assist include the Central Library, Residential Hostels, Academic Computing Labs, Sports & Recreation spaces, Dining & Mess Support, Campus Transport Desk, Campus Health & First Aid, and the Student Services Desk.',
+  ],
+  [
+    'id-card',
+    'Student Services',
+    'ID & Cards',
+    'Replacement ID Card',
+    'lost id card replacement reissue identity',
+    'For a lost or damaged student ID card, submit a Student Welfare request in Student Services with your programme and roll number, and confirm re-issue steps and charges with the university administration office.',
+  ],
+  [
+    'repair',
+    'Student Services',
+    'Maintenance',
+    'Hostel Room Repairs',
+    'maintenance broken tap plumbing light fan repair',
+    'For a hostel room repair, choose Hostel & Mess in Student Services. Include your hostel block, room number, and the item needing attention; you can follow the status in the support tracker.',
+  ],
+  [
+    'care',
+    'Student Services',
+    'Wellbeing',
+    'Student Wellbeing & Counselling',
+    'counselling counseling counsellor stress appointment wellbeing',
+    'Students seeking wellbeing or counselling guidance can log a Student Welfare inquiry in Student Services or contact official GLA University student welfare coordinators for appointment schedules.',
+  ],
+  [
+    'health',
+    'Campus Facilities',
+    'Medical & First Aid',
+    'Campus Health & First Aid',
+    'medical clinic nurse health sick first-aid dispensary',
+    'Campus health services provide basic daytime first-aid support. For current medical centre hours, doctor availability, and emergency numbers, verify through official GLA University channels.',
+  ],
+  [
+    'sports',
+    'Campus Facilities',
+    'Athletics',
+    'Sports & Recreation Facilities',
+    'sports basketball badminton courts gym athletics',
+    'Campus sports spaces include outdoor courts and recreational areas. Confirm facility timings, equipment issue, and court booking rules through campus sports administration.',
+  ],
+  [
+    'labs',
+    'Campus Facilities',
+    'Academic Labs',
+    'Academic Computing Labs',
+    'engineering computer computing lab computers practical',
+    'Academic computing labs support scheduled coursework and supervised practical sessions. Carry your student ID and verify lab schedules with your department.',
+  ],
+  [
+    'laundry',
+    'Hostels & Mess',
+    'Hostel Services',
+    'Hostel Laundry Guidance',
+    'laundry washing clothes hostel counter',
+    'Laundry arrangements vary by hostel block. For residence-specific laundry schedules and procedures, verify through official hostel administration.',
+  ],
+  [
+    'print',
+    'Library',
+    'Printing Services',
+    'Library Printing & Photocopy',
+    'printing printer photocopy scan pages',
+    'Printing and photocopy support is available near the library service area; carry your student ID and verify current per-page charges at the desk.',
+  ],
+  [
+    'study',
+    'Library',
+    'Study Spaces',
+    'Group-Study Room Bookings',
+    'group study booking reserve rooms discussion',
+    'Group-study spaces can be requested at the Central Library desk with student IDs. Confirm current booking duration limits with library staff.',
+  ],
+  [
+    'meal-hours',
+    'Hostels & Mess',
+    'Mess Information',
+    'Dining & Mess Guidance',
+    'breakfast lunch dinner mess timings dining hall',
+    `Mess serving hours and daily menus are managed by hostel administration and vary by residence block. Verify current dining timings on your hostel noticeboard or official GLA University channels.`,
+  ],
+  [
+    'department',
+    'Academics',
+    'Departments',
+    'Programmes & Departments',
+    'courses programmes department admission degrees',
+    'Programmes with indicative tuition listed in Campus Assist are B.Tech, BCA, and BBA. Verify the complete list of GLA University programmes, specialisations, and eligibility on the official university website.',
+  ],
+  [
+    'intern',
+    'Placements',
+    'Internships',
+    'Internship Guidance',
+    'internship internships apply cv application portfolio training',
+    `Prepare an updated résumé and project portfolio and check official GLA University Training & Placement notices for internship drives, eligibility criteria, and review schedules. ${CAMPUS_REFERENCE_NOTE}`,
+  ],
+  [
+    'welcome',
+    'Campus Life',
+    'Orientation',
+    'First-Week Student Checklist',
+    'orientation fresher induction checklist onboarding',
+    'Confirm your student ID and GLAMS portal login, connect to GLA Student Wi-Fi, review your section timetable through official department notices, and explore student interest areas.',
+  ],
+  [
+    'career',
+    'Placements',
+    'Career Services',
+    'Placements & Career Preparation',
+    'placement placements internship internships careers recruiters resume interview workshops',
+    `Campus placement drives, recruiter schedules, résumé workshops, and eligibility notices are coordinated through the official GLA University Training & Placement Cell. ${CAMPUS_REFERENCE_NOTE}`,
+  ],
+  [
+    'clubs',
+    'Clubs & Societies',
+    'Student Interest Areas',
+    'Student Activities & Interest Areas',
+    'clubs societies join student groups activities interest areas',
+    'Common student interest areas include ' +
+      CLUBS_DIRECTORY.map((c) => c.name).join(', ') +
+      '. ' +
+      STUDENT_ACTIVITIES_NOTICE,
+  ],
+  [
+    'events-notices',
+    'Campus Events',
+    'Activities & Notices',
+    'Student Activities & Notices',
+    'events upcoming notices announcements calendar activities',
+    STUDENT_ACTIVITIES_NOTICE,
+  ],
+  ...CLUBS_DIRECTORY.map(
+    (c): Entry => [
+      c.id,
+      'Clubs & Societies',
+      c.category,
+      c.name,
+      `${c.name.toLowerCase()} ${c.category.toLowerCase()} student activity interest area`,
+      `${c.description} ${STUDENT_ACTIVITIES_NOTICE}`,
+    ]
+  ),
+  ...DEMO_TIMETABLE.map(
+    (s, i): Entry => [
+      'slot-' + i,
+      'Academics',
+      'Weekly Timetable',
+      `${s.subject} (${s.day})`,
+      `${s.day.toLowerCase()} timetable ${s.subject.toLowerCase()} ${s.code.toLowerCase()}`,
+      s.day + ' ' + s.time + ' · ' + s.subject + ' (' + s.code + ') · ' + s.room + '.',
+    ]
+  ),
 ];
-export const records: KnowledgeRecord[] = entries.map(([id,category,title,tags,content])=>({id,category,title,content,description:content,keywords:tags.split(' '),tags:tags.split(' '),subcategory:category,sourceName:'Campus handbook',sourceUrl:'',sourceType:'demo',sourceLabel:'Prototype sample',verificationStatus:'Prototype sample',lastReviewedDate:'2026-11-24',lastChecked:'2026-11-24',isPrototypeSample:true}));
+
+function dedupeTokens(raw: string): string[] {
+  const tokens = raw
+    .toLowerCase()
+    .split(/[\s,/&]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1);
+  return Array.from(new Set(tokens));
+}
+
+export const records: KnowledgeRecord[] = entries.map(
+  ([id, category, subcategory, title, rawTags, content]) => {
+    const cleanTags = dedupeTokens(rawTags);
+    return {
+      id,
+      category,
+      subcategory: subcategory !== category ? subcategory : 'General Guide',
+      title,
+      content,
+      description: content,
+      keywords: cleanTags,
+      tags: cleanTags,
+      sourceName: 'Campus Assist Directory',
+      sourceUrl: 'https://www.gla.ac.in',
+      sourceType: 'demo',
+      sourceLabel: 'Prototype sample',
+      verificationStatus: 'Prototype sample',
+      lastReviewedDate: '2026-11-24',
+      lastChecked: '2026-11-24',
+      isPrototypeSample: true,
+    };
+  }
+);

@@ -1,16 +1,15 @@
 import React from 'react';
 import { Layout } from './components/Layout';
 import { CampusProvider, useCampus } from './context/CampusContext';
-import { AboutPage } from './pages/AboutPage';
 import { AcademicsPage } from './pages/AcademicsPage';
 import { AssistantPage } from './pages/AssistantPage';
-import { AuthPage } from './pages/AuthPage';
 import { ClubsPage } from './pages/ClubsPage';
 import { EventsPage } from './pages/EventsPage';
 import { FacilitiesPage } from './pages/FacilitiesPage';
 import { HomePage } from './pages/HomePage';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { StudentServicesPage } from './pages/StudentServicesPage';
+import { WelcomePage } from './pages/WelcomePage';
 
 const PageRouter: React.FC = () => {
   const { activePage } = useCampus();
@@ -18,8 +17,6 @@ const PageRouter: React.FC = () => {
   switch (activePage) {
     case 'home':
       return <HomePage />;
-    case 'auth':
-      return <AuthPage />;
     case 'assistant':
       return <AssistantPage />;
     case 'facilities':
@@ -34,19 +31,29 @@ const PageRouter: React.FC = () => {
       return <StudentServicesPage />;
     case 'knowledge-base':
       return <KnowledgeBasePage />;
-    case 'about':
-      return <AboutPage />;
     default:
       return <HomePage />;
   }
 };
 
+const AppShell: React.FC = () => {
+  const { hasEnteredDashboard } = useCampus();
+
+  if (!hasEnteredDashboard) {
+    return <WelcomePage />;
+  }
+
+  return (
+    <Layout>
+      <PageRouter />
+    </Layout>
+  );
+};
+
 export default function App() {
   return (
     <CampusProvider>
-      <Layout>
-        <PageRouter />
-      </Layout>
+      <AppShell />
     </CampusProvider>
   );
 }

@@ -51,7 +51,7 @@ async function startServer(){
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`AI Campus Helpdesk server running on http://localhost:${PORT}`);
+    console.log(`Campus Assist server running on http://localhost:${PORT}`);
   });
 }
 

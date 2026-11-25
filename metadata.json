@@ -1,6 +1,6 @@
 {
   "name": "AI Campus Helpdesk",
-  "description": "A student helpdesk for fictional Cedarbrook Campus, with a searchable handbook, contextual chat and locally saved student workflows.",
+  "description": "Campus Assist — Student Information Hub designed for GLA University students, offering campus resources, facilities, clubs, events, academics, and student services.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

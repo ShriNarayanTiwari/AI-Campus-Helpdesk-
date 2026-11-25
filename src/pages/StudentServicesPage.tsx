@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
 import {
   CheckCircle2,
-  ExternalLink,
-  HeartHandshake,
-  Mail,
-  Phone,
   Send,
-  ShieldAlert,
   Ticket,
 } from 'lucide-react';
-import { SourceLabel } from '../components/SourceLabel';
 import { useCampus } from '../context/CampusContext';
 import type { HelpdeskTicket } from '../types/campus';
 
@@ -30,9 +24,9 @@ const TICKET_STATUSES: HelpdeskTicket['status'][] = [
 ];
 
 export const StudentServicesPage: React.FC = () => {
-  const { tickets, createDemoTicket, updateDemoTicketStatus, userProfile } = useCampus();
+  const { tickets, createDemoTicket, updateDemoTicketStatus } = useCampus();
 
-  const [studentName, setStudentName] = useState(userProfile.isGuest ? '' : userProfile.name);
+  const [studentName, setStudentName] = useState('');
   const [category, setCategory] = useState<HelpdeskTicket['category']>('Academics & Campus Desk');
   const [priority, setPriority] = useState<HelpdeskTicket['priority']>('Medium');
   const [subject, setSubject] = useState('');
@@ -52,7 +46,7 @@ export const StudentServicesPage: React.FC = () => {
       return;
     }
     if (description.trim().length < 10) {
-      setFormError('Please describe the sample issue in at least 10 characters.');
+      setFormError('Please describe your request in at least 10 characters.');
       return;
     }
 
@@ -78,30 +72,28 @@ export const StudentServicesPage: React.FC = () => {
     <div className="space-y-8">
       <div className="space-y-1.5">
         <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
-          Student Services &amp; Support Desk
+          Student Services &amp; Support
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
-          Get help with Wi-Fi, ID cards and room maintenance.
+          Submit a support request for Wi-Fi, ID cards, hostel maintenance, or general campus assistance.
         </p>
       </div>
 
-      
       <section
-        aria-labelledby="demo-ticket-heading"
+        aria-labelledby="support-request-heading"
         className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
       >
-        {/* Create Ticket Form */}
+        {/* Request Support Form */}
         <form
           onSubmit={handleSubmitTicket}
           className="lg:col-span-5 bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-4"
         >
-          <div className="space-y-1.5">
-            <SourceLabel type="demo" />
-            <h2 id="demo-ticket-heading" className="font-display font-bold text-xl text-slate-900 dark:text-white">
-              Submit a ticket
+          <div className="space-y-1">
+            <h2 id="support-request-heading" className="font-display font-bold text-xl text-slate-900 dark:text-white">
+              Request Support
             </h2>
-            <p className="text-xs text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 rounded-lg p-2.5">
-              Saved on this device.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Share the details of your question or campus issue below.
             </p>
           </div>
 
@@ -112,7 +104,7 @@ export const StudentServicesPage: React.FC = () => {
             >
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
-                ticket <strong className="font-mono">{createdTicketId}</strong> created locally! You can track and change its simulated status in the tracker panel.
+                Support request <strong className="font-mono">{createdTicketId}</strong> has been created. You can review or update its status in the list.
               </span>
             </div>
           )}
@@ -133,7 +125,7 @@ export const StudentServicesPage: React.FC = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label htmlFor="ticket-category" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Department / Category
@@ -179,7 +171,7 @@ export const StudentServicesPage: React.FC = () => {
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g., Library OPAC login inquiry"
+                placeholder="e.g., Library card replacement inquiry"
                 className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
@@ -194,7 +186,7 @@ export const StudentServicesPage: React.FC = () => {
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your sample support request..."
+                placeholder="Describe your support request..."
                 className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
@@ -207,17 +199,17 @@ export const StudentServicesPage: React.FC = () => {
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors cursor-pointer"
           >
             <Send className="w-4 h-4" aria-hidden="true" />
-            <span>Create Ticket</span>
+            <span>Submit Request</span>
           </button>
         </form>
 
-        {/* Ticket Tracker List */}
+        {/* Support Requests List */}
         <div className="lg:col-span-7 bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Ticket className="w-5 h-5 text-blue-700 dark:text-teal-300" aria-hidden="true" />
               <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white tabular-nums">
-                Ticket Tracker ({visibleTickets.length})
+                Support Requests ({visibleTickets.length})
               </h2>
             </div>
 
@@ -233,7 +225,7 @@ export const StudentServicesPage: React.FC = () => {
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  {st === 'All' ? 'All' : st.replace('', '')}
+                  {st}
                 </button>
               ))}
             </div>
@@ -243,15 +235,23 @@ export const StudentServicesPage: React.FC = () => {
             {visibleTickets.length === 0 ? (
               <div className="py-10 text-center space-y-2">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  No tickets match this status filter.
+                  {tickets.length === 0 && statusFilter === 'All'
+                    ? 'No support requests created yet.'
+                    : 'No requests match this status filter.'}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('All')}
-                  className="text-xs font-semibold text-blue-700 dark:text-teal-300 hover:underline cursor-pointer"
-                >
-                  Show all local tickets
-                </button>
+                {tickets.length === 0 && statusFilter === 'All' ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Use the Request Support form to log a campus request and track its status here.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('All')}
+                    className="text-xs font-semibold text-blue-700 dark:text-teal-300 hover:underline cursor-pointer"
+                  >
+                    Show all requests
+                  </button>
+                )}
               </div>
             ) : (
               visibleTickets.map((tkt) => (
@@ -299,7 +299,7 @@ export const StudentServicesPage: React.FC = () => {
                   <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{tkt.subject}</h3>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{tkt.description}</p>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Submitted by {tkt.studentName} · Saved on this device
+                    Submitted by {tkt.studentName}
                   </div>
                 </div>
               ))

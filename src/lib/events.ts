@@ -68,14 +68,14 @@ export function buildIcsContent(event: CampusEvent): string {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//GLA Campus AI Prototype//Student Helpdesk//EN',
+    'PRODID:-//Campus Assist//Student Information Hub//EN',
     'BEGIN:VEVENT',
-    `UID:${event.id}@gla-campus-ai-prototype`,
+    `UID:${event.id}@campus-assist`,
     `DTSTART:${startCompact}`,
     `DTEND:${endCompact}`,
     `SUMMARY:${escapeIcs(event.title)}`,
     `LOCATION:${escapeIcs(event.venue)}`,
-    `DESCRIPTION:${escapeIcs(`${event.description} [${event.sourceLabel}] Source: ${event.sourceUrl}`)}`,
+    `DESCRIPTION:${escapeIcs(`${event.description} — Campus Assist`)}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n');

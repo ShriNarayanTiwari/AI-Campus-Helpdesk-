@@ -2,16 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bookmark,
   Edit3,
-  ExternalLink,
   MessageSquare,
   Plus,
   Search,
   Trash2,
   X,
 } from 'lucide-react';
-import { FreshnessBadge, SourceLabel } from '../components/SourceLabel';
 import { useCampus } from '../context/CampusContext';
-import type { FreshnessStatus, KnowledgeCategory, KnowledgeRecord } from '../types/campus';
+import type { KnowledgeCategory, KnowledgeRecord } from '../types/campus';
 
 const KB_CATEGORIES: Array<'All' | KnowledgeCategory> = [
   'All',
@@ -46,8 +44,6 @@ export const KnowledgeBasePage: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'All' | KnowledgeCategory>(kbCategoryPreset);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'official' | 'demo'>('all');
-  const [freshnessFilter, setFreshnessFilter] = useState<'all' | FreshnessStatus>('all');
   const [sourceFilter, setSourceFilter] = useState('All');
   const [viewingRecord, setViewingRecord] = useState<KnowledgeRecord | null>(null);
 
@@ -69,7 +65,7 @@ export const KnowledgeBasePage: React.FC = () => {
     });
   };
 
-  // Add / Edit campus record modal state
+  // Add / Edit campus resource modal state
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formTitle, setFormTitle] = useState('');
@@ -100,21 +96,13 @@ export const KnowledgeBasePage: React.FC = () => {
     const q = search.trim().toLowerCase();
     return knowledgeBase.filter((r) => {
       if (categoryFilter !== 'All' && r.category !== categoryFilter) return false;
-      if (typeFilter !== 'all' && r.sourceType !== typeFilter) return false;
-      if (freshnessFilter !== 'all' && r.freshnessStatus !== freshnessFilter) return false;
       if (sourceFilter !== 'All' && r.sourceName !== sourceFilter) return false;
       if (!q) return true;
       return `${r.title} ${r.category} ${r.subcategory} ${r.description} ${r.tags.join(' ')} ${r.keywords.join(' ')} ${r.sourceName}`
         .toLowerCase()
         .includes(q);
     });
-  }, [knowledgeBase, search, categoryFilter, typeFilter, freshnessFilter, sourceFilter]);
-
-  const officialTotal = useMemo(
-    () => knowledgeBase.filter((r) => r.sourceType === 'official').length,
-    [knowledgeBase]
-  );
-  const sampleTotal = knowledgeBase.length - officialTotal;
+  }, [knowledgeBase, search, categoryFilter, sourceFilter]);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -160,18 +148,18 @@ export const KnowledgeBasePage: React.FC = () => {
       .filter(Boolean);
 
     const today = new Date().toISOString().slice(0, 10);
-    const cleanKeywords = keywords.length > 0 ? keywords : ['prototype', formCategory.toLowerCase()];
+    const cleanKeywords = keywords.length > 0 ? keywords : [formCategory.toLowerCase()];
 
     const payload = {
       title: formTitle.trim(),
       category: formCategory,
-      subcategory: formSubcategory.trim() || 'Custom Prototype Entry',
+      subcategory: formSubcategory.trim() || 'Student Note',
       content: formDescription.trim(),
       description: formDescription.trim(),
       tags: cleanKeywords,
       keywords: cleanKeywords,
       sourceUrl: cleanUrl,
-      sourceName: 'Prototype sample — Local User Entry',
+      sourceName: 'Campus Assist Directory',
       lastChecked: today,
       lastReviewedDate: today,
     };
@@ -189,11 +177,11 @@ export const KnowledgeBasePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
-            University Knowledge Base
+            Campus Resources
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl tabular-nums">
             Showing <strong className="text-slate-900 dark:text-white">{filtered.length}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{knowledgeBase.length}</strong> searchable campus records.
+            <strong className="text-slate-900 dark:text-white">{knowledgeBase.length}</strong> searchable campus guides.
           </p>
         </div>
 
@@ -203,7 +191,7 @@ export const KnowledgeBasePage: React.FC = () => {
           className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
-          <span>Add record</span>
+          <span>Add resource</span>
         </button>
       </div>
 
@@ -213,7 +201,7 @@ export const KnowledgeBasePage: React.FC = () => {
           <div className="md:col-span-5 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <label htmlFor="kb-search" className="sr-only">
-              Search knowledge base by keyword
+              Search campus resources by keyword
             </label>
             <input
               id="kb-search"
@@ -245,7 +233,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
           <div className="md:col-span-4">
             <label htmlFor="kb-source-select" className="sr-only">
-              Filter by source
+              Filter by directory
             </label>
             <select
               id="kb-source-select"
@@ -255,48 +243,39 @@ export const KnowledgeBasePage: React.FC = () => {
             >
               {uniqueSources.map((src) => (
                 <option key={src} value={src}>
-                  {src === 'All' ? 'All Sources' : src}
+                  {src === 'All' ? 'All Directories' : src}
                 </option>
               ))}
             </select>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-
-
-          {(search ||
-            categoryFilter !== 'All' ||
-            typeFilter !== 'all' ||
-            freshnessFilter !== 'all' ||
-            sourceFilter !== 'All') && (
+        {(search || categoryFilter !== 'All' || sourceFilter !== 'All') && (
+          <div className="flex items-center justify-end pt-1">
             <button
               type="button"
               onClick={() => {
                 setSearch('');
                 setCategoryFilter('All');
-                setTypeFilter('all');
-                setFreshnessFilter('all');
                 setSourceFilter('All');
               }}
               className="text-xs font-semibold text-blue-700 dark:text-teal-300 hover:underline cursor-pointer"
             >
               Clear filters
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
-      {/* Records List */}
+      {/* Resources List */}
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl p-10 text-center space-y-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">No knowledge records matched your filters.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">No campus resources matched your filters.</p>
           <button
             type="button"
             onClick={() => {
               setSearch('');
               setCategoryFilter('All');
-              setTypeFilter('all');
               setSourceFilter('All');
             }}
             className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 rounded-lg cursor-pointer"
@@ -309,103 +288,90 @@ export const KnowledgeBasePage: React.FC = () => {
           {filtered.map((rec) => {
             const saved = isFavorite(rec.id);
             return (
-            <article
-              key={rec.id}
-              className={`rounded-xl p-4 sm:p-5 flex flex-col justify-between gap-3 border min-w-0 ${
-                rec.sourceType === 'demo'
-                  ? 'bg-amber-50/35 dark:bg-amber-950/15 border-amber-200/90 dark:border-amber-800/60'
-                  : 'bg-white dark:bg-[#0E1C32] border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              <div className="space-y-2 min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-medium truncate">
+              <article
+                key={rec.id}
+                className="rounded-xl p-4 sm:p-5 flex flex-col justify-between gap-3 border min-w-0 bg-white dark:bg-[#0E1C32] border-slate-200 dark:border-slate-800"
+              >
+                <div className="space-y-2 min-w-0">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block">
                     {rec.category}
-                    {rec.subcategory ? ` · ${rec.subcategory}` : ''}
+                    {rec.subcategory && rec.subcategory !== rec.category ? ` · ${rec.subcategory}` : ''}
                   </span>
-                  <SourceLabel type={rec.sourceType} compact />
+                  <h2 className="font-display font-bold text-base text-slate-900 dark:text-white break-words">
+                    {rec.title}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 break-words">
+                    {rec.description}
+                  </p>
+                  <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                    Keywords: {Array.from(new Set(rec.tags)).join(', ')}
+                  </p>
                 </div>
-                <h2 className="font-display font-bold text-base text-slate-900 dark:text-white break-words">
-                  {rec.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 break-words">
-                  {rec.description}
-                </p>
-                <div className="pt-0.5">
-                  <FreshnessBadge status={rec.freshnessStatus} lastChecked={rec.lastReviewedDate ?? rec.lastChecked} />
-                </div>
-                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
-                  Tags: {rec.tags.join(', ')}
-                </p>
-              </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handleInspectRecord(rec)}
                     className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
                   >
-                    Inspect Record
+                    View Details
                   </button>
-                  
-                </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleFavorite({
-                        id: rec.id,
-                        title: rec.title,
-                        type: 'kb',
-                        targetPage: 'knowledge-base',
-                        url: rec.sourceUrl,
-                      })
-                    }
-                    aria-label={saved ? `Remove ${rec.title} from saved resources` : `Save ${rec.title}`}
-                    className={`p-1.5 rounded transition-colors cursor-pointer ${
-                      saved
-                        ? 'text-blue-700 dark:text-teal-300 bg-blue-50 dark:bg-blue-950/50'
-                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
-                    }`}
-                  >
-                    <Bookmark className="w-3.5 h-3.5" fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
-                  </button>
-                  {rec.isCustomDemo && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(rec)}
-                        aria-label={`Edit prototype record ${rec.title}`}
-                        className="p-1.5 text-slate-500 hover:text-blue-700 dark:hover:text-teal-300 rounded cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteDemoRecord(rec.id)}
-                        aria-label={`Delete prototype record ${rec.title}`}
-                        className="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleFavorite({
+                          id: rec.id,
+                          title: rec.title,
+                          type: 'kb',
+                          targetPage: 'knowledge-base',
+                          url: rec.sourceUrl,
+                        })
+                      }
+                      aria-label={saved ? `Remove ${rec.title} from saved resources` : `Save ${rec.title}`}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${
+                        saved
+                          ? 'text-blue-700 dark:text-teal-300 bg-blue-50 dark:bg-blue-950/50'
+                          : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+                      }`}
+                    >
+                      <Bookmark className="w-3.5 h-3.5" fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
+                    </button>
+                    {rec.isCustomDemo && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(rec)}
+                          aria-label={`Edit resource ${rec.title}`}
+                          className="p-1.5 text-slate-500 hover:text-blue-700 dark:hover:text-teal-300 rounded cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteDemoRecord(rec.id)}
+                          aria-label={`Delete resource ${rec.title}`}
+                          className="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </article>
+              </article>
             );
           })}
         </div>
       )}
 
-      {/* Inspect Record Modal */}
+      {/* Inspect Resource Modal */}
       {viewingRecord && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Knowledge record: ${viewingRecord.title}`}
+          aria-label={`Campus resource: ${viewingRecord.title}`}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
           onClick={() => setViewingRecord(null)}
         >
@@ -415,20 +381,21 @@ export const KnowledgeBasePage: React.FC = () => {
           >
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
               <div>
-                <SourceLabel type={viewingRecord.sourceType} />
-                <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white mt-1">
+                <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">
                   {viewingRecord.title}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                  {viewingRecord.id} · {viewingRecord.category}
-                  {viewingRecord.subcategory ? ` / ${viewingRecord.subcategory}` : ''} · Reviewed{' '}
-                  {viewingRecord.lastReviewedDate ?? viewingRecord.lastChecked}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {viewingRecord.category}
+                  {viewingRecord.subcategory && viewingRecord.subcategory !== viewingRecord.category
+                    ? ` · ${viewingRecord.subcategory}`
+                    : ''}{' '}
+                  · Updated {viewingRecord.lastReviewedDate ?? viewingRecord.lastChecked}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingRecord(null)}
-                aria-label="Close record inspector"
+                aria-label="Close resource details"
                 className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -439,34 +406,19 @@ export const KnowledgeBasePage: React.FC = () => {
               {viewingRecord.content || viewingRecord.description}
             </p>
 
-            {viewingRecord.freshnessNote && (
-              <div
-                className={`p-3 rounded-lg border text-xs ${
-                  viewingRecord.freshnessStatus === 'session-sensitive' || viewingRecord.sourceType === 'demo'
-                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-                    : 'bg-slate-50 dark:bg-[#091426] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                <FreshnessBadge status={viewingRecord.freshnessStatus} lastChecked={viewingRecord.lastReviewedDate ?? viewingRecord.lastChecked} />
-                <p className="mt-1">{viewingRecord.freshnessNote}</p>
-              </div>
-            )}
-
             <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
               <p>
-                <strong>Verification Status:</strong> {viewingRecord.verificationStatus}
+                <strong>Keywords:</strong>{' '}
+                <span className="font-mono break-words">
+                  {Array.from(new Set(viewingRecord.keywords)).join(', ')}
+                </span>
               </p>
               <p>
-                <strong>Tags &amp; Keywords:</strong> <span className="font-mono break-words">{viewingRecord.keywords.join(', ')}</span>
-              </p>
-              <p>
-                <strong>Source:</strong> {viewingRecord.sourceName}
+                <strong>Directory:</strong> {viewingRecord.sourceName}
               </p>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-              
-
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -477,19 +429,19 @@ export const KnowledgeBasePage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Test in AI Chat</span>
+                <span>Ask Campus Assist</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit campus record Modal */}
+      {/* Add / Edit Campus Resource Modal */}
       {editorOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={editingId ? 'Edit campus record' : 'Add campus record'}
+          aria-label={editingId ? 'Edit campus resource' : 'Add campus resource'}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
           onClick={() => setEditorOpen(false)}
         >
@@ -500,24 +452,22 @@ export const KnowledgeBasePage: React.FC = () => {
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <SourceLabel type="demo" />
-                <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white mt-1">
-                  {editingId ? 'Edit campus record' : 'Add campus record'}
+                <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white">
+                  {editingId ? 'Edit campus resource' : 'Add campus resource'}
                 </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Entries added here are searchable in Campus Resources and Campus Assist.
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditorOpen(false)}
-                aria-label="Close record editor"
+                aria-label="Close resource editor"
                 className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              Your entries are saved on this device and included in handbook searches.
-            </p>
 
             <div className="space-y-3">
               <div>
@@ -530,7 +480,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="e.g., Sample Robotics Club Orientation Note"
+                  placeholder="e.g., Robotics Club Orientation Guide"
                   className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
@@ -579,21 +529,21 @@ export const KnowledgeBasePage: React.FC = () => {
                   required
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Enter clear prototype guidance..."
+                  placeholder="Enter helpful campus details..."
                   className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
 
               <div>
                 <label htmlFor="kb-form-kw" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tags &amp; Search Keywords (comma-separated)
+                  Search Keywords (comma-separated)
                 </label>
                 <input
                   id="kb-form-kw"
                   type="text"
                   value={formKeywords}
                   onChange={(e) => setFormKeywords(e.target.value)}
-                  placeholder="e.g., robotics, hardware, arduino, sample"
+                  placeholder="e.g., robotics, hardware, orientation"
                   className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#091426] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
@@ -626,7 +576,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg cursor-pointer"
               >
-                {editingId ? 'Save Changes' : 'Add record'}
+                {editingId ? 'Save Changes' : 'Add resource'}
               </button>
             </div>
           </form>

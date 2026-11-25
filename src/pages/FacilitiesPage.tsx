@@ -1,18 +1,16 @@
-import {records} from '../data/cedar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bookmark,
   CheckCircle2,
-  ExternalLink,
-  FlaskConical,
+  Clock,
   MessageSquare,
   Search,
   X,
 } from 'lucide-react';
-import { SafeImage } from '../components/SafeImage';
-import { SourceLabel } from '../components/SourceLabel';
+import { FacilityVisual } from '../components/FacilityVisual';
 import { useCampus } from '../context/CampusContext';
 import { FACILITIES_DIRECTORY } from '../data/campusDirectory';
+import { records } from '../data/cedar';
 import type { FacilityItem } from '../types/campus';
 
 const CATEGORIES = [
@@ -71,13 +69,13 @@ export const FacilitiesPage: React.FC = () => {
           Campus Facilities Directory
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
-          Explore Cedarbrook buildings and services.
+          Explore campus facilities, labs, residential halls, dining spaces, and support services.
         </p>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <div className="relative flex-1 max-w-md">
+      {/* Filter & Search Bar — Stacked & Wrapped so "All" is always visible */}
+      <div className="space-y-3">
+        <div className="relative w-full sm:max-w-md">
           <Search
             className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
@@ -90,17 +88,22 @@ export const FacilitiesPage: React.FC = () => {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search library, hostels, mess, bus, gym, medical..."
+            placeholder="Search library, hostels, mess, transport..."
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div
+          role="group"
+          aria-label="Filter facilities by category"
+          className="flex flex-wrap items-center gap-2"
+        >
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setSelectedCategory(cat)}
+              aria-pressed={selectedCategory === cat}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 selectedCategory === cat
                   ? 'bg-blue-700 text-white'
@@ -140,21 +143,13 @@ export const FacilitiesPage: React.FC = () => {
                 className="bg-white dark:bg-[#0E1C32] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between"
               >
                 <div>
-                  {fac.image && (
-                    <div className="h-40 w-full overflow-hidden border-b border-slate-200 dark:border-slate-800">
-                      <SafeImage
-                        src={fac.image}
-                        alt={fac.name}
-                        fallbackTitle={fac.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
+                  <div className="h-44 w-full overflow-hidden border-b border-slate-200 dark:border-slate-800">
+                    <FacilityVisual facilityId={fac.id} name={fac.name} category={fac.category} />
+                  </div>
                   <div className="p-5 space-y-2.5">
-                    <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span>{fac.category}</span>
-                      <SourceLabel type="official" compact />
-                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      {fac.category}
+                    </span>
                     <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white">
                       {fac.name}
                     </h2>
@@ -170,7 +165,7 @@ export const FacilitiesPage: React.FC = () => {
                     onClick={() => handleOpenFacility(fac)}
                     className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap cursor-pointer"
                   >
-                    View Details &amp; Source
+                    View Details
                   </button>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -184,7 +179,7 @@ export const FacilitiesPage: React.FC = () => {
                           url: fac.sourceUrl,
                         })
                       }
-                      aria-label={fav ? `Remove ${fac.name} from favorites` : `Save ${fac.name} to favorites`}
+                      aria-label={fav ? `Remove ${fac.name} from saved resources` : `Save ${fac.name} to saved resources`}
                       className={`p-1.5 rounded-md transition-colors cursor-pointer ${
                         fav
                           ? 'text-blue-700 dark:text-teal-300 bg-blue-50 dark:bg-blue-950/50'
@@ -199,7 +194,7 @@ export const FacilitiesPage: React.FC = () => {
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 rounded-md whitespace-nowrap cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>Ask AI</span>
+                      <span>Ask Campus Assist</span>
                     </button>
                   </div>
                 </div>
@@ -227,7 +222,7 @@ export const FacilitiesPage: React.FC = () => {
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span>{selectedFacility.category}</span>
                   <span aria-hidden="true">·</span>
-                  <span>Last checked {selectedFacility.lastChecked}</span>
+                  <span>Updated {selectedFacility.lastChecked}</span>
                 </div>
                 <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white mt-1">
                   {selectedFacility.name}
@@ -244,7 +239,6 @@ export const FacilitiesPage: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              <SourceLabel type="official" />
               <ul className="space-y-2">
                 {selectedFacility.verifiedDetails.map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-200">
@@ -256,20 +250,25 @@ export const FacilitiesPage: React.FC = () => {
             </div>
 
             <div className="space-y-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <SourceLabel type="demo" />
               <ul className="space-y-2">
-                {records.filter(r=>r.id===selectedFacility.id || (selectedFacility.id==="hostel" && ["rooms","mess"].includes(r.id)) || (selectedFacility.id==="library" && r.id.startsWith("hours-"))).map(r=>r.content).map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
-                    <FlaskConical className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>{item}</span>
-                  </li>
-                ))}
+                {records
+                  .filter(
+                    (r) =>
+                      r.id === selectedFacility.id ||
+                      (selectedFacility.id === 'hostel' && ['hostel-guidance', 'rooms', 'mess'].includes(r.id)) ||
+                      (selectedFacility.id === 'library' && r.id.startsWith('hours-'))
+                  )
+                  .map((r) => r.content)
+                  .map((item, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+                      <Clock className="w-4 h-4 text-blue-600 dark:text-teal-400 shrink-0 mt-0.5" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
               </ul>
             </div>
 
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              
-
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -280,7 +279,7 @@ export const FacilitiesPage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Ask AI About This</span>
+                <span>Ask Campus Assist</span>
               </button>
             </div>
           </div>
